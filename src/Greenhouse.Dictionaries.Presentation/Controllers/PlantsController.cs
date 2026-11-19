@@ -2,6 +2,7 @@ using Greenhouse.Dictionaries.Application.Commands;
 using Greenhouse.Dictionaries.Application.DTOs;
 using Greenhouse.Dictionaries.Application.Queries;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using Swashbuckle.AspNetCore.Annotations;
@@ -34,8 +35,11 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "CatalogWrite")]
     [SwaggerOperation(Summary = "Add a new plant", Description = "Create a new plant with the provided details.")]
-    [ProducesResponseType((int)HttpStatusCode.Created)]
+    [ProducesResponseType(typeof(PlantDto), (int)HttpStatusCode.Created)]
+    [ProducesResponseType((int)HttpStatusCode.Unauthorized)]
+    [ProducesResponseType((int)HttpStatusCode.UnprocessableEntity)]
     public async Task<IActionResult> Add([FromBody] PlantInputDto plant, CancellationToken cancellationToken)
     {
         var createdPlant = await mediator.Send(new AddPlantCommand(plant), cancellationToken);
@@ -43,9 +47,12 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "CatalogWrite")]
     [SwaggerOperation(Summary = "Update a plant", Description = "Update the details of an existing plant by its ID.")]
     [ProducesResponseType((int)HttpStatusCode.NoContent)]
-    [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+    [ProducesResponseType((int)HttpStatusCode.Unauthorized)]
+    [ProducesResponseType((int)HttpStatusCode.NotFound)]
+    [ProducesResponseType((int)HttpStatusCode.UnprocessableEntity)]
     public async Task<IActionResult> Update(
         [FromRoute] int id,
         [FromBody] PlantInputDto plant,
@@ -56,8 +63,11 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "CatalogWrite")]
     [SwaggerOperation(Summary = "Delete a plant", Description = "Delete an existing plant by its ID.")]
     [ProducesResponseType((int)HttpStatusCode.NoContent)]
+    [ProducesResponseType((int)HttpStatusCode.Unauthorized)]
+    [ProducesResponseType((int)HttpStatusCode.NotFound)]
     public async Task<IActionResult> Delete([FromRoute] int id, CancellationToken cancellationToken)
     {
         await mediator.Send(new DeletePlantCommand(id), cancellationToken);

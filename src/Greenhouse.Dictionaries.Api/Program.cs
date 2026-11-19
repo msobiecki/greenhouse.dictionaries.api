@@ -8,7 +8,7 @@ builder.Host.UseInfrastructure();
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
-builder.Services.AddPresentation();
+builder.Services.AddPresentation(builder.Configuration);
 
 var app = builder.Build();
 

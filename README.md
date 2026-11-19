@@ -26,7 +26,7 @@ A .NET Web API providing a comprehensive dictionary of plants. It allows applica
 - 🌡️ 🚧 Temperature and environmental preferences.
 - 🔎 🚧 Plant discovery and search capabilities.
 
-Catalog data is held in memory and resets when the API restarts. Persistence and catalog administration are outside this MVP.
+Catalog data is persisted in SQLite during development and SQL Server in the Compose deployment. Read endpoints are anonymous; write endpoints require an API key.
 
 ## Getting Started
 
@@ -78,7 +78,7 @@ Run the test suite from the repository root:
 dotnet test Greenhouse.Dictionaries.slnx
 ```
 
-The test project covers catalog contents, search and category filtering, detail lookups, and controller responses.
+The test project covers command validation, SQLite migrations and search, audit timestamps, API-key authorization, CRUD responses, and exception mapping through the HTTP pipeline.
 
 ## Configuration
 
@@ -93,6 +93,10 @@ The Development launch profiles use a persistent SQLite database at
 SQL Server credentials. This local database file is gitignored. To use SQL Server during
 development instead, provide `ConnectionStrings__Greenhouse` and set `Database__Provider`
 to `SqlServer`.
+
+Write endpoints require the `X-API-Key` header. Development uses a local-only key from
+`appsettings.Development.json`. Production requires `Security__ApiKey` with at least 32
+characters; keep it in a secret manager and never commit it.
 
 ```bash
 export ConnectionStrings__Greenhouse='Server=localhost,1433;Database=Greenhouse;User Id=sa;Password=<your-password>;Encrypt=True;TrustServerCertificate=True'
@@ -120,13 +124,16 @@ in production; do not commit certificates or passwords to the repository.
 export HTTPS_CERTIFICATE_PATH=/absolute/path/to/certificate.pfx
 export HTTPS_CERTIFICATE_PASSWORD='your-certificate-password'
 export MSSQL_SA_PASSWORD='your-strong-sql-server-password'
+export API_KEY="$(openssl rand -hex 32)"
 docker compose up --build -d
 ```
 
 Compose starts a SQL Server container with persistent storage and waits for it to
 become healthy before starting the API. On startup, the API creates the `Greenhouse`
 database and its initial schema if they do not exist. Keep the SQL Server password
-in a secret manager for production; do not commit it to the repository.
+in a secret manager for production; do not commit it to the repository. SQL Server is
+bound to localhost for optional host access; the API reaches it through the private
+Compose network. `API_KEY` protects catalog write operations.
 
 The API listens on `https://localhost:8443`, and requests to
 `http://localhost:8080` are redirected to HTTPS. For a real deployment, replace

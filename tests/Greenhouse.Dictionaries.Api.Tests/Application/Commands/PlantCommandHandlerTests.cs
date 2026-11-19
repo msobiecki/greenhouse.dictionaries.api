@@ -4,11 +4,12 @@ using Greenhouse.Dictionaries.Application.DTOs;
 using Greenhouse.Dictionaries.Application.Abstractions;
 using Greenhouse.Dictionaries.Domain.Entities;
 using Greenhouse.Dictionaries.Domain.Exceptions;
+using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Greenhouse.Dictionaries.Api.Tests.Commands;
+namespace Greenhouse.Dictionaries.Api.Tests.Application.Commands;
 
 public class PlantCommandsTests
 {
@@ -39,6 +40,17 @@ public class PlantCommandsTests
         var second = await sender.Send(new AddPlantCommand(plant));
 
         Assert.NotEqual(first.Id, second.Id);
+    }
+
+    [Fact]
+    public async Task AddPlantTask_RejectsInvalidInputThroughValidationPipeline()
+    {
+        using var provider = CreateServiceProvider(new StubPlantRepository());
+        var sender = provider.GetRequiredService<ISender>();
+        var invalidPlant = CreatePlant() with { CommonName = " " };
+
+        await Assert.ThrowsAsync<ValidationException>(
+            () => sender.Send(new AddPlantCommand(invalidPlant)));
     }
 
     [Fact]

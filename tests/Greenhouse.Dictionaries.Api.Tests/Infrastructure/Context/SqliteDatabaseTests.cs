@@ -2,13 +2,16 @@ using Greenhouse.Dictionaries.Application.Abstractions;
 using Greenhouse.Dictionaries.Domain.Entities;
 using Greenhouse.Dictionaries.Infrastructure;
 using Greenhouse.Dictionaries.Infrastructure.Context;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
 
-namespace Greenhouse.Dictionaries.Api.Tests.Context;
+namespace Greenhouse.Dictionaries.Api.Tests.Infrastructure.Context;
 
 public sealed class SqliteDatabaseTests
 {
@@ -60,6 +63,21 @@ public sealed class SqliteDatabaseTests
     }
 
     [Fact]
+    public void SqliteMigrationGeneratesRollbackScript()
+    {
+        var options = new DbContextOptionsBuilder<DatabaseContext>()
+            .UseSqlite("Data Source=:memory:")
+            .Options;
+        using var context = new DatabaseContext(options);
+        var initialMigrationId = Assert.Single(context.Database.GetMigrations());
+
+        var rollbackScript = context.GetService<IMigrator>()
+            .GenerateScript(initialMigrationId, Migration.InitialDatabase);
+
+        Assert.Contains("DROP TABLE \"Plants\"", rollbackScript, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Startup_BaselinesExistingEnsureCreatedDatabaseAndPreservesData()
     {
         var databasePath = CreateDatabasePath();
@@ -81,6 +99,77 @@ public sealed class SqliteDatabaseTests
             var context = provider.GetRequiredService<DatabaseContext>();
             Assert.Equal("Existing rose", (await context.Plants.SingleAsync()).CommonName);
             await AssertAllMigrationsAppliedAsync(context);
+        }
+        finally
+        {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Startup_RejectsLegacyDatabaseWithMissingPrimaryKey()
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            await using (var connection = new SqliteConnection($"Data Source={databasePath}"))
+            {
+                await connection.OpenAsync();
+                await using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "Plants" (
+                        "Id" INTEGER NOT NULL,
+                        "ScientificName" TEXT NOT NULL,
+                        "CommonName" TEXT NOT NULL,
+                        "Family" TEXT NOT NULL,
+                        "Category" TEXT NOT NULL,
+                        "Description" TEXT NOT NULL,
+                        "Sunlight" TEXT NOT NULL,
+                        "Watering" TEXT NOT NULL,
+                        "FlowerColor" TEXT NULL,
+                        "CreatedAt" TEXT NOT NULL,
+                        "UpdatedAt" TEXT NOT NULL
+                    );
+                    """;
+                await command.ExecuteNonQueryAsync();
+            }
+
+            await using var provider = CreateServiceProvider(databasePath);
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => InitializeAsync(provider));
+            Assert.Contains("does not match the initial schema", exception.Message);
+        }
+        finally
+        {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task UnitOfWorkSetsAuditTimestampsOnInsertAndUpdate()
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            await using var provider = CreateServiceProvider(databasePath);
+            await InitializeAsync(provider);
+
+            var context = provider.GetRequiredService<DatabaseContext>();
+            var unitOfWork = provider.GetRequiredService<IUnitOfWork>();
+            var plant = CreatePlant("Rose");
+            context.Plants.Add(plant);
+            await unitOfWork.SaveChangesAsync();
+
+            Assert.NotEqual(default, plant.CreatedAt);
+            Assert.NotEqual(default, plant.UpdatedAt);
+            var originalCreatedAt = plant.CreatedAt;
+
+            plant.CommonName = "Updated rose";
+            plant.UpdatedAt = DateTime.UnixEpoch;
+            await unitOfWork.SaveChangesAsync();
+
+            Assert.Equal(originalCreatedAt, plant.CreatedAt);
+            Assert.True(plant.UpdatedAt > DateTime.UnixEpoch);
         }
         finally
         {

@@ -38,15 +38,37 @@ internal sealed class DatabaseInitializer(IServiceScopeFactory scopeFactory) : I
             }
 
             var plantColumns = await GetPlantColumnsAsync(connection, cancellationToken);
-            string[] expectedColumns =
-            [
-                "Id", "ScientificName", "CommonName", "Family", "Category", "Description",
-                "Sunlight", "Watering", "FlowerColor", "CreatedAt", "UpdatedAt"
-            ];
-            if (!expectedColumns.All(plantColumns.Contains))
+            var expectedColumns = new Dictionary<string, SqliteColumnRequirements>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Id"] = new(["INTEGER"], IsNotNull: true, IsPrimaryKey: true),
+                ["ScientificName"] = new(["TEXT"], IsNotNull: true, IsPrimaryKey: false),
+                ["CommonName"] = new(["TEXT"], IsNotNull: true, IsPrimaryKey: false),
+                ["Family"] = new(["TEXT"], IsNotNull: true, IsPrimaryKey: false),
+                ["Category"] = new(["TEXT"], IsNotNull: true, IsPrimaryKey: false),
+                ["Description"] = new(["TEXT"], IsNotNull: true, IsPrimaryKey: false),
+                ["Sunlight"] = new(["TEXT"], IsNotNull: true, IsPrimaryKey: false),
+                ["Watering"] = new(["TEXT"], IsNotNull: true, IsPrimaryKey: false),
+                ["FlowerColor"] = new(["TEXT"], IsNotNull: false, IsPrimaryKey: false),
+                ["CreatedAt"] = new(["TEXT", "datetime2(0)"], IsNotNull: true, IsPrimaryKey: false),
+                ["UpdatedAt"] = new(["TEXT", "datetime2(0)"], IsNotNull: true, IsPrimaryKey: false)
+            };
+            var schemaMismatches = expectedColumns
+                .Where(expected =>
+                    !plantColumns.TryGetValue(expected.Key, out var actual) ||
+                    !expected.Value.Types.Contains(actual.Type, StringComparer.OrdinalIgnoreCase) ||
+                    actual.IsNotNull != expected.Value.IsNotNull ||
+                    actual.IsPrimaryKey != expected.Value.IsPrimaryKey)
+                .Select(expected =>
+                {
+                    plantColumns.TryGetValue(expected.Key, out var actual);
+                    return $"{expected.Key}: expected {expected.Value}, actual {actual?.ToString() ?? "missing"}";
+                })
+                .ToArray();
+            if (schemaMismatches.Length > 0)
             {
                 throw new InvalidOperationException(
-                    "The existing SQLite Plants table has no migration history and does not match the initial schema. Back up and migrate the database manually.");
+                    "The existing SQLite Plants table has no migration history and does not match the initial schema. " +
+                    $"Mismatches: {string.Join("; ", schemaMismatches)}. Back up and migrate the database manually.");
             }
 
             await using var command = connection.CreateCommand();
@@ -89,19 +111,29 @@ internal sealed class DatabaseInitializer(IServiceScopeFactory scopeFactory) : I
         return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) > 0;
     }
 
-    private static async Task<HashSet<string>> GetPlantColumnsAsync(
+    private static async Task<Dictionary<string, SqliteColumnDefinition>> GetPlantColumnsAsync(
         System.Data.Common.DbConnection connection,
         CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
         command.CommandText = "PRAGMA table_info(\"Plants\")";
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        var columns = new HashSet<string>(StringComparer.Ordinal);
+        var columns = new Dictionary<string, SqliteColumnDefinition>(StringComparer.OrdinalIgnoreCase);
         while (await reader.ReadAsync(cancellationToken))
         {
-            columns.Add(reader.GetString(1));
+            columns[reader.GetString(1)] = new SqliteColumnDefinition(
+                reader.GetString(2),
+                reader.GetInt64(3) != 0,
+                reader.GetInt64(5) != 0);
         }
 
         return columns;
     }
+
+    private sealed record SqliteColumnRequirements(
+        string[] Types,
+        bool IsNotNull,
+        bool IsPrimaryKey);
+
+    private sealed record SqliteColumnDefinition(string Type, bool IsNotNull, bool IsPrimaryKey);
 }

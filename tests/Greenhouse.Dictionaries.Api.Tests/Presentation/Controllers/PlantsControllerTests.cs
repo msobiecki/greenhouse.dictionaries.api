@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Greenhouse.Dictionaries.Api.Tests.Controllers;
+namespace Greenhouse.Dictionaries.Api.Tests.Presentation.Controllers;
 
 public class PlantsControllerTests
 {
