@@ -8,7 +8,7 @@ public class PlantConfiguration : BaseEntityConfiguration<Plant>
 {
     public override void Configure(EntityTypeBuilder<Plant> builder)
     {
-        builder.ToTable("Plants");  
+        builder.ToTable("Plants");
 
         builder.Property(p => p.ScientificName).IsRequired();
         builder.Property(p => p.CommonName).IsRequired();
@@ -18,7 +18,7 @@ public class PlantConfiguration : BaseEntityConfiguration<Plant>
         builder.Property(p => p.Sunlight).IsRequired();
         builder.Property(p => p.Watering).IsRequired();
         builder.Property(p => p.FlowerColor);
-        
+
         base.Configure(builder);
     }
 }

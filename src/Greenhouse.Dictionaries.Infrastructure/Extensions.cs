@@ -40,7 +40,7 @@ public static class Extensions
                 case "sqlite":
                     options.UseSqlite(connectionString)
                         .ConfigureWarnings(warnings =>
-                            warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+                            warnings.Log(RelationalEventId.PendingModelChangesWarning));
                     break;
                 case "sqlserver":
                     options.UseSqlServer(connectionString);

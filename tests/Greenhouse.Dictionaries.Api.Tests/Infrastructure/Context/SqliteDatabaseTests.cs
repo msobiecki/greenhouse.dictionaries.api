@@ -146,6 +146,48 @@ public sealed class SqliteDatabaseTests
     }
 
     [Fact]
+    public async Task Startup_RejectsLegacyDatabaseWithUnexpectedRequiredColumn()
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            await using (var connection = new SqliteConnection($"Data Source={databasePath}"))
+            {
+                await connection.OpenAsync();
+                await using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "Plants" (
+                        "Id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        "ScientificName" TEXT NOT NULL,
+                        "CommonName" TEXT NOT NULL,
+                        "Family" TEXT NOT NULL,
+                        "Category" TEXT NOT NULL,
+                        "Description" TEXT NOT NULL,
+                        "Sunlight" TEXT NOT NULL,
+                        "Watering" TEXT NOT NULL,
+                        "FlowerColor" TEXT NULL,
+                        "CreatedAt" TEXT NOT NULL,
+                        "UpdatedAt" TEXT NOT NULL,
+                        "LegacyRequiredValue" TEXT NOT NULL
+                    );
+                    """;
+                await command.ExecuteNonQueryAsync();
+            }
+
+            await using var provider = CreateServiceProvider(databasePath);
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => InitializeAsync(provider));
+
+            Assert.Contains("LegacyRequiredValue", exception.Message);
+            Assert.Contains("unexpected column", exception.Message);
+        }
+        finally
+        {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task UnitOfWorkSetsAuditTimestampsOnInsertAndUpdate()
     {
         var databasePath = CreateDatabasePath();

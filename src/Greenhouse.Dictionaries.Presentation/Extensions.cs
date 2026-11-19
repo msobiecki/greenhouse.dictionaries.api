@@ -46,7 +46,7 @@ public static class Extensions
 
         services.AddControllers();
         services.AddTransient<ExceptionHandlingMiddleware>();
-        
+
         return services;
     }
 

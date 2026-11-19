@@ -67,6 +67,7 @@ dotnet build
 Run the application:
 
 ```bash
+export Security__ApiKey="$(openssl rand -hex 32)"
 dotnet run --project src/Greenhouse.Dictionaries.Api
 ```
 
@@ -79,6 +80,13 @@ dotnet test Greenhouse.Dictionaries.slnx
 ```
 
 The test project covers command validation, SQLite migrations and search, audit timestamps, API-key authorization, CRUD responses, and exception mapping through the HTTP pipeline.
+
+An opt-in SQL Server integration test verifies production migrations and repository queries. Point it only at a dedicated test database whose name starts with `GreenhouseTests`:
+
+```bash
+export GREENHOUSE_SQLSERVER_TEST_CONNECTION='Server=localhost,1433;Database=GreenhouseTestsLocal;User Id=sa;Password=<test-password>;Encrypt=True;TrustServerCertificate=True'
+dotnet test tests/Greenhouse.Dictionaries.Api.Tests/Greenhouse.Dictionaries.Api.Tests.csproj --filter FullyQualifiedName~SqlServerPlantRepositoryTests
+```
 
 ## Configuration
 
@@ -94,9 +102,9 @@ SQL Server credentials. This local database file is gitignored. To use SQL Serve
 development instead, provide `ConnectionStrings__Greenhouse` and set `Database__Provider`
 to `SqlServer`.
 
-Write endpoints require the `X-API-Key` header. Development uses a local-only key from
-`appsettings.Development.json`. Production requires `Security__ApiKey` with at least 32
-characters; keep it in a secret manager and never commit it.
+Write endpoints require the `X-API-Key` header. Set `Security__ApiKey` to a random key
+with at least 32 characters for local development and production. Keep it in an
+environment variable or secret manager; do not commit it.
 
 ```bash
 export ConnectionStrings__Greenhouse='Server=localhost,1433;Database=Greenhouse;User Id=sa;Password=<your-password>;Encrypt=True;TrustServerCertificate=True'

@@ -19,7 +19,8 @@ internal sealed class UnitOfWork : IUnitOfWork
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public void UpdateAuditableEntries() {
+    public void UpdateAuditableEntries()
+    {
         var entries = dbContext.ChangeTracker.Entries()
             .Where(e => e.Entity is IAuditableEntity && (e.State == Microsoft.EntityFrameworkCore.EntityState.Added || e.State == Microsoft.EntityFrameworkCore.EntityState.Modified));
 

@@ -63,6 +63,9 @@ internal sealed class DatabaseInitializer(IServiceScopeFactory scopeFactory) : I
                     plantColumns.TryGetValue(expected.Key, out var actual);
                     return $"{expected.Key}: expected {expected.Value}, actual {actual?.ToString() ?? "missing"}";
                 })
+                .Concat(plantColumns.Keys
+                    .Except(expectedColumns.Keys, StringComparer.OrdinalIgnoreCase)
+                    .Select(columnName => $"{columnName}: unexpected column"))
                 .ToArray();
             if (schemaMismatches.Length > 0)
             {

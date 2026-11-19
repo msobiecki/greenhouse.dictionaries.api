@@ -5,7 +5,7 @@ using AutoMapper;
 
 namespace Greenhouse.Dictionaries.Application.Queries;
 
-public sealed class GetPlantsQueryHandler(IPlantReadRepository plantRepository, IMapper mapper): IQueryHandler<GetPlantsQuery, IEnumerable<PlantDto>>
+public sealed class GetPlantsQueryHandler(IPlantReadRepository plantRepository, IMapper mapper) : IQueryHandler<GetPlantsQuery, IEnumerable<PlantDto>>
 {
     public async Task<IEnumerable<PlantDto>> Handle(GetPlantsQuery request, CancellationToken cancellationToken)
     {
