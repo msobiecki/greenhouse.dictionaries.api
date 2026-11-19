@@ -9,7 +9,8 @@ public sealed class GetPlantsQueryHandler(IPlantReadRepository plantRepository, 
 {
     public async Task<IEnumerable<PlantDto>> Handle(GetPlantsQuery request, CancellationToken cancellationToken)
     {
-        var plants = await plantRepository.GetAllAsync(request.Search, request.Category, cancellationToken);
+        var plants = await plantRepository.GetAllAsync(
+            request.Search, request.Filters, cancellationToken);
         return plants.Select(plant => mapper.Map<PlantDto>(plant)).ToArray();
     }
 }

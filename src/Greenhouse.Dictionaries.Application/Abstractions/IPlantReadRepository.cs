@@ -6,7 +6,7 @@ public interface IPlantReadRepository
 {
     Task<IEnumerable<Plant>> GetAllAsync(
         string? search = null,
-        string? category = null,
+        PlantSearchFilters? filters = null,
         CancellationToken cancellationToken = default);
 
     Task<Plant?> GetByIdAsync(int id, CancellationToken cancellationToken = default);

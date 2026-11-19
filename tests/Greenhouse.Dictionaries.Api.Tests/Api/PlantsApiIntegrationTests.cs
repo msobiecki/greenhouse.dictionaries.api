@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Greenhouse.Dictionaries.Application.DTOs;
+using Greenhouse.Dictionaries.Domain.Entities;
 using Greenhouse.Dictionaries.Presentation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -104,14 +105,57 @@ public sealed class PlantsApiIntegrationTests
         var createdPlant = await createResponse.Content.ReadFromJsonAsync<PlantDto>();
         Assert.NotNull(createdPlant);
         Assert.True(createdPlant.Id > 0);
+        Assert.Equal("East Asia", createdPlant.NativeRange);
+        Assert.Equal("Coastal forests", createdPlant.Habitat);
+        Assert.Equal(15m, createdPlant.TemperatureMinC);
+        Assert.Equal(27m, createdPlant.TemperatureMaxC);
+        Assert.Equal(50m, createdPlant.HumidityMinPercent);
+        Assert.Equal(70m, createdPlant.HumidityMaxPercent);
+        Assert.Equal("Avoid cold drafts.", createdPlant.EnvironmentalNotes);
+        Assert.Equal(SunlightRequirement.BrightIndirectLight, createdPlant.SunlightRequirement);
+        Assert.Equal(4m, createdPlant.SunlightHoursMin);
+        Assert.Equal(6m, createdPlant.SunlightHoursMax);
+        Assert.Equal(WateringRequirement.WaterWhenTopLayerDry, createdPlant.WateringRequirement);
+        Assert.Equal("Water thoroughly and let excess drain away.", createdPlant.WateringInstructions);
+        Assert.Equal("Reduce watering during winter dormancy.", createdPlant.SeasonalWateringNotes);
+        Assert.Equal("Feed monthly during active growth.", createdPlant.FertilizingInstructions);
+        Assert.Equal("A dense shrub with arching thorny stems.", createdPlant.DetailedDescription);
+        Assert.Equal("Shrub", createdPlant.GrowthHabit);
+        Assert.Equal(PlantLifeCycle.Perennial, createdPlant.LifeCycle);
+        Assert.Equal("Beach rose", Assert.Single(createdPlant.AlternativeNames));
+        Assert.Equal(180m, createdPlant.MatureHeightCm);
+        Assert.Equal("CC BY 4.0", Assert.Single(createdPlant.Images).License);
+        var rabbitAssessment = Assert.Single(
+            createdPlant.ToxicityAssessments, assessment => assessment.TargetCode == "rabbit");
+        Assert.Equal(ToxicityLevel.Caution, rabbitAssessment.Level);
+        var catAssessment = Assert.Single(
+            createdPlant.ToxicityAssessments, assessment => assessment.TargetCode == "cat");
+        Assert.Equal("Example plant registry", Assert.Single(catAssessment.Sources).Publisher);
+
+        var discoverResponse = await client.GetAsync(
+            "/api/plants?search=thorny&category=Flowering&family=Rosaceae" +
+            "&sunlightRequirement=BrightIndirectLight&wateringRequirement=WaterWhenTopLayerDry" +
+            "&toxicityTarget=cat&toxicityLevel=Toxic&temperatureC=20&humidityPercent=60");
+        Assert.Equal(HttpStatusCode.OK, discoverResponse.StatusCode);
+        var discoveredPlants = await discoverResponse.Content.ReadFromJsonAsync<PlantDto[]>();
+        Assert.Equal(createdPlant.Id, Assert.Single(discoveredPlants!).Id);
 
         var updateResponse = await client.PutAsJsonAsync(
-            $"/api/plants/{createdPlant.Id}", CreatePlant("Updated rose"));
+            $"/api/plants/{createdPlant.Id}", CreatePlant("Updated rose", "Japanese rose"));
         Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
 
         var getResponse = await client.GetAsync($"/api/plants/{createdPlant.Id}");
         var updatedPlant = await getResponse.Content.ReadFromJsonAsync<PlantDto>();
         Assert.Equal("Updated rose", updatedPlant?.CommonName);
+        Assert.Equal("East Asia", updatedPlant?.NativeRange);
+        Assert.Equal("Coastal forests", updatedPlant?.Habitat);
+        Assert.Equal(15m, updatedPlant?.TemperatureMinC);
+        Assert.Equal(70m, updatedPlant?.HumidityMaxPercent);
+        Assert.Equal(WateringRequirement.WaterWhenTopLayerDry, updatedPlant?.WateringRequirement);
+        Assert.Equal("Repot every two to three years in spring.", updatedPlant?.RepottingInstructions);
+        Assert.Equal("Fragrant pink flowers in early summer.", updatedPlant?.FlowerDescription);
+        Assert.Equal("Japanese rose", Assert.Single(updatedPlant!.AlternativeNames));
+        Assert.Contains(updatedPlant.ToxicityAssessments, assessment => assessment.TargetCode == "rabbit");
 
         var deleteResponse = await client.DeleteAsync($"/api/plants/{createdPlant.Id}");
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
@@ -133,16 +177,59 @@ public sealed class PlantsApiIntegrationTests
         var missingResponse = await client.DeleteAsync("/api/plants/404");
         Assert.Equal(HttpStatusCode.NotFound, missingResponse.StatusCode);
         Assert.Contains("404", await missingResponse.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await client.GetAsync("/api/plants?temperatureC=100")).StatusCode);
     }
 
-    private static PlantInputDto CreatePlant(string commonName = "Rugosa rose") => new(
+    private static PlantInputDto CreatePlant(
+        string commonName = "Rugosa rose",
+        string alternativeName = "Beach rose") => new(
         "Rosa rugosa",
         commonName,
+        [alternativeName],
         "Rosaceae",
-        "flower",
+        PlantType.Flowering,
         "A hardy flowering shrub.",
-        "Full sun",
-        "Water during dry periods.");
+        "Thorny arching stems and fragrant pink flowers.",
+        NativeRange: "East Asia",
+        Habitat: "Coastal forests",
+        TemperatureMinC: 15,
+        TemperatureMaxC: 27,
+        HumidityMinPercent: 50,
+        HumidityMaxPercent: 70,
+        EnvironmentalNotes: "Avoid cold drafts.",
+        SunlightRequirement: SunlightRequirement.BrightIndirectLight,
+        SunlightHoursMin: 4,
+        SunlightHoursMax: 6,
+        MatureHeightCm: 180,
+        MatureWidthCm: 250,
+        ToxicityAssessments:
+        [
+            new("cat", ToxicityLevel.Toxic, "Test toxicity details.",
+                [new("https://example.test/toxicity", "Example plant registry")]),
+            new("dog", ToxicityLevel.NoKnownRisk),
+            new("human", ToxicityLevel.NoKnownRisk),
+            new("rabbit", ToxicityLevel.Caution, "Test caution details.")
+        ],
+        Images: [new PlantImageInputDto(
+            "https://example.test/rose.jpg",
+            "Botanical archive",
+            "CC BY 4.0",
+            "Example author")],
+        DetailedDescription: "A dense shrub with arching thorny stems.",
+        GrowthHabit: "Shrub",
+        FoliageDescription: "Glossy, wrinkled leaves with serrated edges.",
+        FlowerDescription: "Fragrant pink flowers in early summer.",
+        FloweringPeriod: "Late spring to early summer",
+        FruitDescription: "Large red rose hips develop in autumn.",
+        LifeCycle: PlantLifeCycle.Perennial,
+        WateringRequirement: WateringRequirement.WaterWhenTopLayerDry,
+        WateringInstructions: "Water thoroughly and let excess drain away.",
+        SeasonalWateringNotes: "Reduce watering during winter dormancy.",
+        FertilizingInstructions: "Feed monthly during active growth.",
+        PruningInstructions: "Remove dead or damaged stems after flowering.",
+        RepottingInstructions: "Repot every two to three years in spring.");
 
     private sealed class PlantsApiFactory : WebApplicationFactory<Program>
     {

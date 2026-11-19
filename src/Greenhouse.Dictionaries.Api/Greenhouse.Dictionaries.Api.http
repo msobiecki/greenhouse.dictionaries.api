@@ -5,7 +5,12 @@ Accept: application/json
 
 ###
 
-GET {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants?search=rose&category=flower
+GET {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants?search=rose&category=Flowering
+Accept: application/json
+
+###
+
+GET {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants?search=split%20leaves&category=Foliage&family=Araceae&sunlightRequirement=BrightIndirectLight&wateringRequirement=WaterWhenTopLayerDry&temperatureC=22&humidityPercent=65
 Accept: application/json
 
 ###
@@ -21,12 +26,56 @@ Content-Type: application/json
 {
 	"scientificName": "Monstera deliciosa",
 	"commonName": "Swiss cheese plant",
+	"alternativeNames": ["Split-leaf philodendron"],
 	"family": "Araceae",
-	"category": "foliage",
+	"category": "Foliage",
 	"description": "A tropical climbing plant with split leaves.",
-	"sunlight": "Bright indirect light",
-	"watering": "Water when the top soil is dry.",
-	"flowerColor": null
+	"identifyingCharacteristics": "Large glossy leaves with deep splits and holes.",
+	"nativeRange": "Central America",
+	"habitat": "Tropical rainforests",
+	"temperatureMinC": 18,
+	"temperatureMaxC": 30,
+	"humidityMinPercent": 60,
+	"humidityMaxPercent": 80,
+	"environmentalNotes": "Protect from cold drafts and sudden temperature changes.",
+	"sunlightRequirement": "BrightIndirectLight",
+	"sunlightHoursMin": 4,
+	"sunlightHoursMax": 6,
+	"wateringRequirement": "WaterWhenTopLayerDry",
+	"wateringInstructions": "Water thoroughly, then let excess water drain away.",
+	"seasonalWateringNotes": "Reduce watering during cooler, darker winter months.",
+	"fertilizingInstructions": "Feed with a balanced fertilizer during active growth.",
+	"pruningInstructions": "Remove dead leaves and trim unruly growth as needed.",
+	"repottingInstructions": "Repot when roots fill the pot, usually every two to three years.",
+	"matureHeightCm": 300,
+	"matureWidthCm": 100,
+	"detailedDescription": "A vigorous tropical climber that develops large, split leaves as it matures.",
+	"growthHabit": "Climbing vine",
+	"foliageDescription": "Glossy, deeply split leaves with oval holes.",
+	"flowerDescription": "Mature plants may produce a pale spadix surrounded by a cream spathe.",
+	"floweringPeriod": "Rare indoors; mainly in mature plants",
+	"fruitDescription": "The fruit is rarely produced indoors.",
+	"lifeCycle": "Perennial",
+	"toxicityAssessments": [
+		{
+			"targetCode": "cat",
+			"level": "Toxic",
+			"details": "Contains calcium oxalate crystals.",
+			"sources": [{ "url": "https://example.org/plant-safety", "publisher": "Plant Safety Database" }]
+		},
+		{
+			"targetCode": "rabbit",
+			"level": "Unknown"
+		}
+	],
+	"images": [
+		{
+			"url": "https://example.org/monstera.jpg",
+			"source": "Botanical archive",
+			"license": "CC BY 4.0",
+			"attribution": "Example author"
+		}
+	]
 }
 
 ###
@@ -37,10 +86,54 @@ Content-Type: application/json
 {
 	"scientificName": "Monstera deliciosa",
 	"commonName": "Swiss cheese plant",
+	"alternativeNames": ["Split-leaf philodendron"],
 	"family": "Araceae",
-	"category": "foliage",
+	"category": "Foliage",
 	"description": "A tropical climbing plant with split leaves.",
-	"sunlight": "Bright indirect light",
-	"watering": "Water when the top soil is dry.",
-	"flowerColor": null
+	"identifyingCharacteristics": "Large glossy leaves with deep splits and holes.",
+	"nativeRange": "Central America",
+	"habitat": "Tropical rainforests",
+	"temperatureMinC": 18,
+	"temperatureMaxC": 30,
+	"humidityMinPercent": 60,
+	"humidityMaxPercent": 80,
+	"environmentalNotes": "Protect from cold drafts and sudden temperature changes.",
+	"sunlightRequirement": "BrightIndirectLight",
+	"sunlightHoursMin": 4,
+	"sunlightHoursMax": 6,
+	"wateringRequirement": "WaterWhenTopLayerDry",
+	"wateringInstructions": "Water thoroughly, then let excess water drain away.",
+	"seasonalWateringNotes": "Reduce watering during cooler, darker winter months.",
+	"fertilizingInstructions": "Feed with a balanced fertilizer during active growth.",
+	"pruningInstructions": "Remove dead leaves and trim unruly growth as needed.",
+	"repottingInstructions": "Repot when roots fill the pot, usually every two to three years.",
+	"matureHeightCm": 300,
+	"matureWidthCm": 100,
+	"detailedDescription": "A vigorous tropical climber that develops large, split leaves as it matures.",
+	"growthHabit": "Climbing vine",
+	"foliageDescription": "Glossy, deeply split leaves with oval holes.",
+	"flowerDescription": "Mature plants may produce a pale spadix surrounded by a cream spathe.",
+	"floweringPeriod": "Rare indoors; mainly in mature plants",
+	"fruitDescription": "The fruit is rarely produced indoors.",
+	"lifeCycle": "Perennial",
+	"toxicityAssessments": [
+		{
+			"targetCode": "cat",
+			"level": "Toxic",
+			"details": "Contains calcium oxalate crystals.",
+			"sources": [{ "url": "https://example.org/plant-safety", "publisher": "Plant Safety Database" }]
+		},
+		{
+			"targetCode": "rabbit",
+			"level": "Unknown"
+		}
+	],
+	"images": [
+		{
+			"url": "https://example.org/monstera.jpg",
+			"source": "Botanical archive",
+			"license": "CC BY 4.0",
+			"attribution": "Example author"
+		}
+	]
 }

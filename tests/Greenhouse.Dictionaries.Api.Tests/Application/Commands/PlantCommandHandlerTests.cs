@@ -118,14 +118,14 @@ public class PlantCommandsTests
             ScientificName = "Scientific name",
             CommonName = commonName,
             Family = "Family",
-            Category = "plant",
+            Category = PlantType.Foliage,
             Description = "Description",
-            Sunlight = "Sun",
-            Watering = "Water"
+            IdentifyingCharacteristics = "Distinctive foliage."
         };
 
     private static PlantInputDto CreatePlant(string commonName = "Common name") =>
-        new("Scientific name", commonName, "Family", "plant", "Description", "Sun", "Water");
+        new("Scientific name", commonName, [], "Family", PlantType.Foliage,
+            "Description", "Distinctive foliage.");
 
     private sealed class StubPlantRepository(IEnumerable<Plant>? plants = null)
         : IPlantWriteRepository, IPlantReadRepository
@@ -135,7 +135,7 @@ public class PlantCommandsTests
 
         public Task<IEnumerable<Plant>> GetAllAsync(
             string? search = null,
-            string? category = null,
+            PlantSearchFilters? filters = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IEnumerable<Plant>>(_plants.Values);
 

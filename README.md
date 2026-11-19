@@ -19,14 +19,16 @@ A .NET Web API providing a comprehensive dictionary of plants. It allows applica
 
 ## Features
 
-- 🌱 🚧 Comprehensive dictionary of plants.
-- 🌿 🚧 Detailed plant information and descriptions.
-- ☀️ 🚧 Growing conditions and sunlight requirements.
-- 💧 🚧 Watering and care recommendations.
-- 🌡️ 🚧 Temperature and environmental preferences.
-- 🔎 🚧 Plant discovery and search capabilities.
+- Comprehensive plant profiles with scientific and common names, aliases, family and type, identifying features, native range, mature size, toxicity, and image source/license metadata.
+- Detailed botanical descriptions covering growth habit, foliage, flowers, flowering period, fruit, and life cycle.
+- Sunlight preference with an optional daily light-hours range.
+- Watering guidance based on substrate dryness, plus optional seasonal notes, fertilizing, pruning, and repotting recommendations.
+- Optional temperature and relative-humidity ranges with additional environmental notes.
+- Plant discovery through text search across names, aliases, descriptions, habitat, and toxicity notes, with filters for category, family, light, watering, toxicity, temperature, and humidity.
 
 Catalog data is persisted in SQLite during development and SQL Server in the Compose deployment. Read endpoints are anonymous; write endpoints require an API key.
+
+Toxicity is provided as assessments for target organisms (for example `cat`, `dog`, or `rabbit`), each with a risk level and optional details and sources. See Swagger for the full request and response schema.
 
 ## Getting Started
 
@@ -68,8 +70,13 @@ Run the application:
 
 ```bash
 export Security__ApiKey="$(openssl rand -hex 32)"
+printf 'API key: %s\n' "$Security__ApiKey"
 dotnet run --project src/Greenhouse.Dictionaries.Api
 ```
+
+Use this API key in the `X-API-Key` header when calling write endpoints from any client.
+In Swagger UI at `http://localhost:5224/swagger`, select **Authorize** and paste the
+printed key value; Swagger will send it in that header.
 
 ## Tests
 

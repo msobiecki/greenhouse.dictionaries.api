@@ -23,17 +23,16 @@ public class PlantsControllerTests
                 ScientificName = "Rosa",
                 CommonName = "Rose",
                 Family = "Rosaceae",
-                Category = "flower",
+                Category = PlantType.Flowering,
                 Description = "A flowering shrub.",
-                Sunlight = "Sun",
-                Watering = "Regular",
-                FlowerColor = "Red"
+                IdentifyingCharacteristics = "Red flowers and thorny stems."
             }
         ];
         using var provider = CreateServiceProvider(new StubPlantRepository(plants));
         var controller = provider.GetRequiredService<PlantsController>();
 
-        var result = await controller.GetAll("rose", "flower", CancellationToken.None);
+        var result = await controller.GetAll(
+            "rose", "Flowering", null, null, null, null, null, null, null, CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var resultPlants = Assert.IsAssignableFrom<IEnumerable<PlantDto>>(okResult.Value);
@@ -62,17 +61,16 @@ public class PlantsControllerTests
             ScientificName = "Rosa rugosa",
             CommonName = "Old name",
             Family = "Rosaceae",
-            Category = "flower",
+            Category = PlantType.Flowering,
             Description = "A hardy flowering shrub.",
-            Sunlight = "Full sun",
-            Watering = "Water during dry periods."
+            IdentifyingCharacteristics = "Thorny arching stems."
         };
         using var provider = CreateServiceProvider(new StubPlantRepository([existingPlant]));
         var controller = provider.GetRequiredService<PlantsController>();
 
         var result = await controller.Update(1, new PlantInputDto(
-            "Rosa rugosa", "Rugosa rose", "Rosaceae", "flower",
-            "A hardy flowering shrub.", "Full sun", "Water during dry periods."), CancellationToken.None);
+            "Rosa rugosa", "Rugosa rose", [], "Rosaceae", PlantType.Flowering,
+            "A hardy flowering shrub.", "Thorny arching stems."), CancellationToken.None);
 
         Assert.IsType<NoContentResult>(result);
         Assert.Equal("Rugosa rose", existingPlant.CommonName);
@@ -97,7 +95,7 @@ public class PlantsControllerTests
 
         public Task<IEnumerable<Plant>> GetAllAsync(
             string? search = null,
-            string? category = null,
+            PlantSearchFilters? filters = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IEnumerable<Plant>>(_plants.Values);
 

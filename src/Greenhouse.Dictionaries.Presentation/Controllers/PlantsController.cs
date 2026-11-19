@@ -1,6 +1,8 @@
 using Greenhouse.Dictionaries.Application.Commands;
+using Greenhouse.Dictionaries.Application.Abstractions;
 using Greenhouse.Dictionaries.Application.DTOs;
 using Greenhouse.Dictionaries.Application.Queries;
+using Greenhouse.Dictionaries.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,14 +16,55 @@ namespace Greenhouse.Dictionaries.Presentation.Controllers;
 public sealed class PlantsController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    [SwaggerOperation(Summary = "Get all plants", Description = "Retrieve a list of all plants with optional search and category filters.")]
+    [SwaggerOperation(Summary = "Discover plants", Description = "Search plant names, aliases and descriptions, then filter by category, family, care requirements or suitable environment.")]
     [ProducesResponseType(typeof(IEnumerable<PlantDto>), (int)HttpStatusCode.OK)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
         [FromQuery] string? category,
+        [FromQuery] string? family,
+        [FromQuery] SunlightRequirement? sunlightRequirement,
+        [FromQuery] WateringRequirement? wateringRequirement,
+        [FromQuery] string? toxicityTarget,
+        [FromQuery] ToxicityLevel? toxicityLevel,
+        [FromQuery] decimal? temperatureC,
+        [FromQuery] decimal? humidityPercent,
         CancellationToken cancellationToken)
     {
-        return Ok(await mediator.Send(new GetPlantsQuery(search, category), cancellationToken));
+        if (search?.Length > 200)
+        {
+            return BadRequest("Search text cannot exceed 200 characters.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(family) && family.Length > 200)
+        {
+            return BadRequest("Family filter cannot exceed 200 characters.");
+        }
+
+        if (temperatureC is < -50 or > 60)
+        {
+            return BadRequest("Temperature filter must be between -50 and 60 degrees Celsius.");
+        }
+
+        if (humidityPercent is < 0 or > 100)
+        {
+            return BadRequest("Humidity filter must be between 0 and 100 percent.");
+        }
+
+        if (toxicityTarget?.Length > 100)
+        {
+            return BadRequest("Toxicity target cannot exceed 100 characters.");
+        }
+
+        var filters = new PlantSearchFilters(
+            Family: family,
+            SunlightRequirement: sunlightRequirement,
+            WateringRequirement: wateringRequirement,
+            ToxicityTarget: toxicityTarget,
+            ToxicityLevel: toxicityLevel,
+            TemperatureC: temperatureC,
+            HumidityPercent: humidityPercent,
+            Category: category);
+        return Ok(await mediator.Send(new GetPlantsQuery(search, filters), cancellationToken));
     }
 
     [HttpGet("{id}")]

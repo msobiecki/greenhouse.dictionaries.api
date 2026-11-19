@@ -29,7 +29,8 @@ public sealed class SqliteDatabaseTests
             await context.SaveChangesAsync();
 
             var repository = provider.GetRequiredService<IPlantReadRepository>();
-            var result = await repository.GetAllAsync("ŻÓŁĆ", "FLOWER");
+            var result = await repository.GetAllAsync(
+                "ŻÓŁĆ", new PlantSearchFilters(Category: "FLOWERING"));
 
             Assert.Equal("Żółć", Assert.Single(result).CommonName);
         }
@@ -69,16 +70,16 @@ public sealed class SqliteDatabaseTests
             .UseSqlite("Data Source=:memory:")
             .Options;
         using var context = new DatabaseContext(options);
-        var initialMigrationId = Assert.Single(context.Database.GetMigrations());
+        var latestMigrationId = context.Database.GetMigrations().Last();
 
         var rollbackScript = context.GetService<IMigrator>()
-            .GenerateScript(initialMigrationId, Migration.InitialDatabase);
+            .GenerateScript(latestMigrationId, Migration.InitialDatabase);
 
         Assert.Contains("DROP TABLE \"Plants\"", rollbackScript, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task Startup_BaselinesExistingEnsureCreatedDatabaseAndPreservesData()
+    public async Task Startup_MigratesExistingInitialSchemaAndPreservesPlantData()
     {
         var databasePath = CreateDatabasePath();
         try
@@ -88,16 +89,78 @@ public sealed class SqliteDatabaseTests
                 .Options;
             await using (var existingContext = new DatabaseContext(options))
             {
-                await existingContext.Database.EnsureCreatedAsync();
-                existingContext.Plants.Add(CreatePlant("Existing rose"));
-                await existingContext.SaveChangesAsync();
+                var initialMigrationId = existingContext.Database.GetMigrations().First();
+                await existingContext.GetService<IMigrator>().MigrateAsync(initialMigrationId);
+                await existingContext.Database.ExecuteSqlRawAsync("""
+                    INSERT INTO "Plants" (
+                        "ScientificName", "CommonName", "Family", "Category", "Description",
+                        "Sunlight", "Watering", "FlowerColor", "CreatedAt", "UpdatedAt")
+                    VALUES (
+                        'Rosa canina', 'Existing rose', 'Rosaceae', 'flower', 'A flowering plant.',
+                        'Full sun', 'Regular', NULL, '2024-01-02T03:04:05.0000000Z', '2024-01-02T03:04:05.0000000Z');
+                    """);
             }
 
             await using var provider = CreateServiceProvider(databasePath);
             await InitializeAsync(provider);
 
             var context = provider.GetRequiredService<DatabaseContext>();
-            Assert.Equal("Existing rose", (await context.Plants.SingleAsync()).CommonName);
+            var migratedPlant = await context.Plants.SingleAsync();
+            Assert.Equal("Existing rose", migratedPlant.CommonName);
+            Assert.Equal(PlantType.Flowering, migratedPlant.Category);
+            Assert.Equal(migratedPlant.Description, migratedPlant.IdentifyingCharacteristics);
+            await AssertAllMigrationsAppliedAsync(context);
+        }
+        finally
+        {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Startup_MigratesLegacyToxicityValuesToAssessmentsAndSources()
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            var options = new DbContextOptionsBuilder<DatabaseContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+            await using (var existingContext = new DatabaseContext(options))
+            {
+                var previousModelMigration = existingContext.Database.GetMigrations()
+                    .Single(migration => migration.EndsWith("_AddComprehensivePlantDictionary", StringComparison.Ordinal));
+                await existingContext.GetService<IMigrator>().MigrateAsync(previousModelMigration);
+                await existingContext.Database.ExecuteSqlRawAsync("""
+                    INSERT INTO "Plants" (
+                        "ScientificName", "CommonName", "Category", "Family", "Description",
+                        "IdentifyingCharacteristics", "CreatedAt", "UpdatedAt", "ToxicToCats", "ToxicToDogs",
+                        "ToxicToHumans", "ToxicityDetails", "ToxicitySource")
+                    VALUES (
+                        'Monstera deliciosa', 'Monstera', 'Foliage', 'Araceae', 'A climbing plant.',
+                        'Split leaves.', '2024-01-02T03:04:05.0000000Z', '2024-01-02T03:04:05.0000000Z',
+                        1, 0, NULL, 'Irritating sap.', 'https://example.test/monstera-safety');
+                    """);
+            }
+
+            await using var provider = CreateServiceProvider(databasePath);
+            await InitializeAsync(provider);
+
+            var context = provider.GetRequiredService<DatabaseContext>();
+            var plant = await context.Plants
+                .Include(candidate => candidate.ToxicityAssessments)
+                    .ThenInclude(assessment => assessment.Sources)
+                .SingleAsync();
+            var catAssessment = Assert.Single(
+                plant.ToxicityAssessments, assessment => assessment.TargetCode == "cat");
+            var dogAssessment = Assert.Single(
+                plant.ToxicityAssessments, assessment => assessment.TargetCode == "dog");
+
+            Assert.Equal(ToxicityLevel.Toxic, catAssessment.Level);
+            Assert.Equal("Irritating sap.", catAssessment.Details);
+            Assert.Equal("https://example.test/monstera-safety", Assert.Single(catAssessment.Sources).Url);
+            Assert.Equal(ToxicityLevel.NoKnownRisk, dogAssessment.Level);
+            Assert.Equal("https://example.test/monstera-safety", Assert.Single(dogAssessment.Sources).Url);
             await AssertAllMigrationsAppliedAsync(context);
         }
         finally
@@ -254,10 +317,9 @@ public sealed class SqliteDatabaseTests
         ScientificName = "Rosa canina",
         CommonName = commonName,
         Family = "Rosaceae",
-        Category = "flower",
+        Category = PlantType.Flowering,
         Description = "A flowering plant.",
-        Sunlight = "Full sun",
-        Watering = "Regular"
+        IdentifyingCharacteristics = "Fragrant flowers and thorny stems."
     };
 
     private static string CreateDatabasePath() =>

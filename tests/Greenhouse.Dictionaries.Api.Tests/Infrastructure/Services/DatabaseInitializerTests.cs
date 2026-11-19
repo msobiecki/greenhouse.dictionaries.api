@@ -39,10 +39,9 @@ public sealed class DatabaseInitializerTests
                     ScientificName = "Rosa rugosa",
                     CommonName = "Rugosa rose",
                     Family = "Rosaceae",
-                    Category = "flower",
+                    Category = PlantType.Flowering,
                     Description = "A hardy flowering shrub.",
-                    Sunlight = "Full sun",
-                    Watering = "Regular"
+                    IdentifyingCharacteristics = "Thorny arching stems and pink flowers."
                 });
                 await context.SaveChangesAsync();
             }

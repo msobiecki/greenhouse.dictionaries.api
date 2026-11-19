@@ -31,7 +31,9 @@ public class DatabaseContextTests
         Assert.Equal("datetime2(0)", plantEntity.FindProperty(nameof(Plant.CreatedAt))!.GetColumnType());
         Assert.Equal("datetime2(0)", plantEntity.FindProperty(nameof(Plant.UpdatedAt))!.GetColumnType());
         Assert.False(plantEntity.FindProperty(nameof(Plant.CommonName))!.IsNullable);
-        Assert.True(plantEntity.FindProperty(nameof(Plant.FlowerColor))!.IsNullable);
+        Assert.False(plantEntity.FindProperty(nameof(Plant.IdentifyingCharacteristics))!.IsNullable);
+        Assert.NotNull(plantEntity.FindNavigation(nameof(Plant.AlternativeNames)));
+        Assert.NotNull(plantEntity.FindNavigation(nameof(Plant.Images)));
     }
 
     [Fact]

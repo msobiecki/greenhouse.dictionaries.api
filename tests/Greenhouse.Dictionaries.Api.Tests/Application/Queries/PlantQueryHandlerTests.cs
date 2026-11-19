@@ -15,14 +15,18 @@ public sealed class PlantQueryHandlerTests
         var repository = new StubPlantReadRepository([CreatePlant(1), CreatePlant(2, "White rose")]);
         using var provider = CreateProvider(repository);
         var sender = provider.GetRequiredService<MediatR.ISender>();
+        var filters = new PlantSearchFilters(
+            "Rosaceae", SunlightRequirement.BrightIndirectLight, WateringRequirement.WaterWhenTopLayerDry,
+            "cat", ToxicityLevel.Toxic, 20, 60, Category: "Flowering");
 
-        var result = (await sender.Send(new GetPlantsQuery("rose", "flower"))).ToArray();
+        var result = (await sender.Send(new GetPlantsQuery("rose", filters))).ToArray();
 
         Assert.Equal(2, result.Length);
         Assert.Equal("Rose", result[0].CommonName);
-        Assert.Equal("flower", result[0].Category);
+        Assert.Equal(PlantType.Flowering, result[0].Category);
         Assert.Equal("rose", repository.LastSearch);
-        Assert.Equal("flower", repository.LastCategory);
+        Assert.Equal("Flowering", repository.LastFilters?.Category);
+        Assert.Same(filters, repository.LastFilters);
     }
 
     [Fact]
@@ -66,25 +70,24 @@ public sealed class PlantQueryHandlerTests
         ScientificName = "Rosa rugosa",
         CommonName = commonName,
         Family = "Rosaceae",
-        Category = "flower",
+        Category = PlantType.Flowering,
         Description = "A flowering shrub.",
-        Sunlight = "Full sun",
-        Watering = "Regular"
+        IdentifyingCharacteristics = "Thorny stems and rose-like flowers."
     };
 
     private sealed class StubPlantReadRepository(IEnumerable<Plant> plants) : IPlantReadRepository
     {
         public string? LastSearch { get; private set; }
-        public string? LastCategory { get; private set; }
+        public PlantSearchFilters? LastFilters { get; private set; }
 
         public Task<IEnumerable<Plant>> GetAllAsync(
             string? search = null,
-            string? category = null,
+            PlantSearchFilters? filters = null,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             LastSearch = search;
-            LastCategory = category;
+            LastFilters = filters;
             return Task.FromResult(plants);
         }
 

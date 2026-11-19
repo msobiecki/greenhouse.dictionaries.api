@@ -20,17 +20,47 @@ public sealed class PlantRepositoryTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         await using var context = new DatabaseContext(options);
+        var rose = CreatePlant("Rugosa rose", "Rosa rugosa", PlantType.Flowering);
+        rose.IdentifyingCharacteristics = "Thorny stems with wrinkled leaves.";
+        rose.SunlightRequirement = SunlightRequirement.BrightIndirectLight;
+        rose.WateringRequirement = WateringRequirement.WaterWhenTopLayerDry;
+        rose.TemperatureMinC = 15;
+        rose.TemperatureMaxC = 27;
+        rose.HumidityMinPercent = 50;
+        rose.HumidityMaxPercent = 70;
+        rose.ToxicityAssessments.Add(new PlantToxicityAssessment
+        {
+            TargetCode = "cat",
+            Level = ToxicityLevel.Toxic
+        });
         context.Plants.AddRange(
-            CreatePlant("Rugosa rose", "Rosa rugosa", "flower"),
-            CreatePlant("Orchid", "Phalaenopsis", "flower"),
-            CreatePlant("Oak", "Quercus robur", "tree"));
+            rose,
+            CreatePlant("Orchid", "Phalaenopsis", PlantType.Flowering),
+            CreatePlant("Oak", "Quercus robur", PlantType.Other));
         await context.SaveChangesAsync();
         var repository = new PlantReadRepository(context);
 
-        var result = await repository.GetAllAsync("ROSA", "FLOWER");
+        var result = await repository.GetAllAsync(
+            "ROSA", new PlantSearchFilters(Category: "FLOWERING"));
 
         Assert.Equal(2, result.Count());
         Assert.Contains(result, plant => plant.CommonName == "Rugosa rose");
+
+        var discoverResults = await repository.GetAllAsync(
+            search: "WRINKLED",
+            filters: new PlantSearchFilters(
+                "rosaceae",
+                SunlightRequirement.BrightIndirectLight,
+                WateringRequirement.WaterWhenTopLayerDry,
+                "CAT",
+                ToxicityLevel.Toxic,
+                TemperatureC: 20,
+                HumidityPercent: 60,
+                Category: "FLOWERING"));
+
+        Assert.Equal("Rugosa rose", Assert.Single(discoverResults).CommonName);
+        Assert.Empty(await repository.GetAllAsync(
+            "rose", new PlantSearchFilters(Category: "not-a-plant-type")));
     }
 
     [Fact]
@@ -47,9 +77,18 @@ public sealed class PlantRepositoryTests
             var writeRepository = services.GetRequiredService<IPlantWriteRepository>();
             var unitOfWork = services.GetRequiredService<IUnitOfWork>();
 
-            var rose = CreatePlant("Rugosa rose", "Rosa rugosa", "flower");
-            var orchid = CreatePlant("Orchid", "Phalaenopsis", "flower");
-            var tree = CreatePlant("Oak", "Quercus robur", "tree");
+            var rose = CreatePlant("Rugosa rose", "Rosa rugosa", PlantType.Flowering);
+            rose.AlternativeNames.Add(new PlantAlias { Name = "Beach rose" });
+            rose.Images.Add(new PlantImage
+            {
+                Url = "https://example.test/rose.jpg",
+                Source = "Botanical archive",
+                License = "CC BY 4.0",
+                Attribution = "Example author"
+            });
+            rose.NativeRange = "East Asia";
+            var orchid = CreatePlant("Orchid", "Phalaenopsis", PlantType.Flowering);
+            var tree = CreatePlant("Oak", "Quercus robur", PlantType.Other);
             tree.Family = "Fagaceae";
             await writeRepository.AddAsync(rose);
             await writeRepository.AddAsync(orchid);
@@ -63,18 +102,30 @@ public sealed class PlantRepositoryTests
             Assert.Equal(rose.Id, (await readRepository.GetByIdAsync(rose.Id))?.Id);
             Assert.Null(await readRepository.GetByIdAsync(int.MaxValue));
             Assert.Equal("Rugosa rose", Assert.Single(await readRepository.GetAllAsync("rugosa")).CommonName);
-            Assert.Equal(2, (await readRepository.GetAllAsync(category: "FLOWER")).Count());
+            Assert.Equal(2, (await readRepository.GetAllAsync(
+                filters: new PlantSearchFilters(Category: "FLOWERING"))).Count());
             Assert.Equal(2, (await readRepository.GetAllAsync(search: "Rosaceae")).Count());
+            Assert.Equal("Rugosa rose", Assert.Single(await readRepository.GetAllAsync("beach rose")).CommonName);
             Assert.Equal(3, (await readRepository.GetAllAsync()).Count());
+            var loadedRose = await readRepository.GetByIdAsync(rose.Id);
+            Assert.NotNull(loadedRose);
+            Assert.Equal("East Asia", loadedRose.NativeRange);
+            Assert.Equal("Beach rose", Assert.Single(loadedRose.AlternativeNames).Name);
+            Assert.Equal("CC BY 4.0", Assert.Single(loadedRose.Images).License);
 
             var detachedRose = await readRepository.GetByIdAsync(rose.Id);
             Assert.NotNull(detachedRose);
             Assert.Equal(EntityState.Detached, services.GetRequiredService<DatabaseContext>().Entry(detachedRose).State);
 
             detachedRose.CommonName = "Updated rose";
+            detachedRose.AlternativeNames = [new PlantAlias { Name = "Japanese rose" }];
+            detachedRose.Images = [];
             await writeRepository.UpdateAsync(detachedRose);
             await unitOfWork.SaveChangesAsync();
-            Assert.Equal("Updated rose", (await readRepository.GetByIdAsync(rose.Id))?.CommonName);
+            var updatedRose = await readRepository.GetByIdAsync(rose.Id);
+            Assert.Equal("Updated rose", updatedRose?.CommonName);
+            Assert.Equal("Japanese rose", Assert.Single(updatedRose!.AlternativeNames).Name);
+            Assert.Empty(updatedRose.Images);
 
             await writeRepository.DeleteAsync(tree);
             await unitOfWork.SaveChangesAsync();
@@ -109,15 +160,14 @@ public sealed class PlantRepositoryTests
         }
     }
 
-    private static Plant CreatePlant(string commonName, string scientificName, string category) => new()
+    private static Plant CreatePlant(string commonName, string scientificName, PlantType category) => new()
     {
         CommonName = commonName,
         ScientificName = scientificName,
         Family = "Rosaceae",
         Category = category,
         Description = "A plant used to test repository behavior.",
-        Sunlight = "Full sun",
-        Watering = "Regular"
+        IdentifyingCharacteristics = "A distinctive test plant."
     };
 
     private static void DeleteDatabaseFiles(string databasePath)

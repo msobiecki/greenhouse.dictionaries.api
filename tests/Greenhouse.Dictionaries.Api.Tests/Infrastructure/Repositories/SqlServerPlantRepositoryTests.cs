@@ -1,3 +1,4 @@
+using Greenhouse.Dictionaries.Application.Abstractions;
 using Greenhouse.Dictionaries.Domain.Entities;
 using Greenhouse.Dictionaries.Infrastructure.Context;
 using Greenhouse.Dictionaries.Infrastructure.Repositories;
@@ -32,10 +33,9 @@ public sealed class SqlServerPlantRepositoryTests
             ScientificName = "Rosa rugosa",
             CommonName = uniqueName,
             Family = "Rosaceae",
-            Category = "flower",
+            Category = PlantType.Flowering,
             Description = "SQL Server provider integration test.",
-            Sunlight = "Full sun",
-            Watering = "Regular"
+            IdentifyingCharacteristics = "Thorny stems and pink flowers."
         };
 
         try
@@ -44,7 +44,8 @@ public sealed class SqlServerPlantRepositoryTests
             await context.SaveChangesAsync();
 
             var repository = new PlantReadRepository(context);
-            var result = await repository.GetAllAsync(uniqueName, "FLOWER");
+            var result = await repository.GetAllAsync(
+                uniqueName, new PlantSearchFilters(Category: "FLOWERING"));
 
             Assert.Equal(plant.Id, Assert.Single(result).Id);
             Assert.True(await repository.IsAlreadyExistAsync(plant.Id));

@@ -1,6 +1,7 @@
 using FluentValidation.TestHelper;
 using Greenhouse.Dictionaries.Application.Commands;
 using Greenhouse.Dictionaries.Application.DTOs;
+using Greenhouse.Dictionaries.Domain.Entities;
 using Xunit;
 
 namespace Greenhouse.Dictionaries.Api.Tests.Application.Commands;
@@ -45,10 +46,9 @@ public class UpdatePlantCommandValidationTests
             ScientificName = "",
             CommonName = "",
             Family = "",
-            Category = "",
+            Category = (PlantType)999,
             Description = "",
-            Sunlight = "",
-            Watering = ""
+            IdentifyingCharacteristics = ""
         };
 
         var result = _validator.TestValidate(new UpdatePlantCommand(1, plant));
@@ -58,16 +58,15 @@ public class UpdatePlantCommandValidationTests
         result.ShouldHaveValidationErrorFor(command => command.Plant.Family);
         result.ShouldHaveValidationErrorFor(command => command.Plant.Category);
         result.ShouldHaveValidationErrorFor(command => command.Plant.Description);
-        result.ShouldHaveValidationErrorFor(command => command.Plant.Sunlight);
-        result.ShouldHaveValidationErrorFor(command => command.Plant.Watering);
+        result.ShouldHaveValidationErrorFor(command => command.Plant.IdentifyingCharacteristics);
     }
 
     private static PlantInputDto CreatePlant() => new(
         "Rosa rugosa",
         "Rugosa rose",
+        [],
         "Rosaceae",
-        "flower",
+        PlantType.Flowering,
         "A hardy flowering shrub.",
-        "Full sun",
-        "Water during dry periods.");
+        "Thorny arching stems and fragrant pink flowers.");
 }

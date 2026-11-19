@@ -34,10 +34,9 @@ public sealed class PlantDomainTests
             ScientificName = "Rosa rugosa",
             CommonName = "Rugosa rose",
             Family = "Rosaceae",
-            Category = "flower",
+            Category = PlantType.Flowering,
             Description = "A flowering shrub.",
-            Sunlight = "Full sun",
-            Watering = "Regular"
+            IdentifyingCharacteristics = "Thorny stems and rose-like flowers."
         };
 
         Assert.IsAssignableFrom<Greenhouse.Dictionaries.Domain.Abstractions.IAuditableEntity>(plant);
