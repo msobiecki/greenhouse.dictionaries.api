@@ -6,12 +6,21 @@ using AutoMapper;
 
 namespace Greenhouse.Dictionaries.Application.Queries;
 
-public sealed class GetPlantsQueryHandler(IPlantReadRepository plantRepository, IMapper mapper) : IQueryHandler<GetPlantsQuery, IEnumerable<PlantDto>>
+public sealed class GetPlantsQueryHandler(IPlantReadRepository plantRepository, IMapper mapper) : IQueryHandler<GetPlantsQuery, PagedResult<PlantDto>>
 {
-    public async Task<IEnumerable<PlantDto>> Handle(GetPlantsQuery request, CancellationToken cancellationToken)
+    public async Task<PagedResult<PlantDto>> Handle(GetPlantsQuery request, CancellationToken cancellationToken)
     {
         var plants = await plantRepository.GetAllAsync(
-            request.Search, request.Filters, cancellationToken);
-        return plants.Select(plant => PlantLocalization.ToDto(mapper, plant, request.Language)).ToArray();
+            request.Search,
+            request.Filters,
+            request.Offset,
+            request.Limit,
+            request.Language,
+            request.OnlyRequestedLanguage,
+            cancellationToken);
+        var items = plants.Items
+            .Select(plant => PlantLocalization.ToDto(mapper, plant, request.Language))
+            .ToArray();
+        return new PagedResult<PlantDto>(items, plants.Offset, plants.Limit, plants.TotalCount);
     }
 }

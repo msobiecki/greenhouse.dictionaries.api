@@ -43,8 +43,9 @@ public sealed class PlantRepositoryTests
         var result = await repository.GetAllAsync(
             "ROSA", new PlantSearchFilters(Category: "FLOWERING"));
 
-        Assert.Equal(2, result.Count());
-        Assert.Contains(result, plant => plant.CommonName == "Rugosa rose");
+        Assert.Equal(2, result.TotalCount);
+        Assert.Equal(2, result.Items.Count);
+        Assert.Contains(result.Items, plant => plant.CommonName == "Rugosa rose");
 
         var discoverResults = await repository.GetAllAsync(
             search: "WRINKLED",
@@ -58,9 +59,9 @@ public sealed class PlantRepositoryTests
                 HumidityPercent: 60,
                 Category: "FLOWERING"));
 
-        Assert.Equal("Rugosa rose", Assert.Single(discoverResults).CommonName);
-        Assert.Empty(await repository.GetAllAsync(
-            "rose", new PlantSearchFilters(Category: "not-a-plant-type")));
+        Assert.Equal("Rugosa rose", Assert.Single(discoverResults.Items).CommonName);
+        Assert.Empty((await repository.GetAllAsync(
+            "rose", new PlantSearchFilters(Category: "not-a-plant-type"))).Items);
     }
 
     [Fact]
@@ -101,12 +102,12 @@ public sealed class PlantRepositoryTests
             Assert.False(await readRepository.IsAlreadyExistAsync(int.MaxValue));
             Assert.Equal(rose.Id, (await readRepository.GetByIdAsync(rose.Id))?.Id);
             Assert.Null(await readRepository.GetByIdAsync(int.MaxValue));
-            Assert.Equal("Rugosa rose", Assert.Single(await readRepository.GetAllAsync("rugosa")).CommonName);
+            Assert.Equal("Rugosa rose", Assert.Single((await readRepository.GetAllAsync("rugosa")).Items).CommonName);
             Assert.Equal(2, (await readRepository.GetAllAsync(
-                filters: new PlantSearchFilters(Category: "FLOWERING"))).Count());
-            Assert.Equal(2, (await readRepository.GetAllAsync(search: "Rosaceae")).Count());
-            Assert.Equal("Rugosa rose", Assert.Single(await readRepository.GetAllAsync("beach rose")).CommonName);
-            Assert.Equal(3, (await readRepository.GetAllAsync()).Count());
+                filters: new PlantSearchFilters(Category: "FLOWERING"))).TotalCount);
+            Assert.Equal(2, (await readRepository.GetAllAsync(search: "Rosaceae")).TotalCount);
+            Assert.Equal("Rugosa rose", Assert.Single((await readRepository.GetAllAsync("beach rose")).Items).CommonName);
+            Assert.Equal(3, (await readRepository.GetAllAsync()).TotalCount);
             var loadedRose = await readRepository.GetByIdAsync(rose.Id);
             Assert.NotNull(loadedRose);
             Assert.Equal("East Asia", loadedRose.NativeRange);

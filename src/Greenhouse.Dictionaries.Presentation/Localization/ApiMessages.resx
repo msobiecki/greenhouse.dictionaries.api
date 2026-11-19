@@ -13,6 +13,8 @@
   <data name="TemperatureFilterOutOfRange" xml:space="preserve"><value>Temperature filter must be between -50 and 60 degrees Celsius.</value></data>
   <data name="HumidityFilterOutOfRange" xml:space="preserve"><value>Humidity filter must be between 0 and 100 percent.</value></data>
   <data name="ToxicityTargetTooLong" xml:space="preserve"><value>Toxicity target cannot exceed 100 characters.</value></data>
+  <data name="OffsetMustBeNonNegative" xml:space="preserve"><value>Offset must be zero or greater.</value></data>
+  <data name="LimitOutOfRange" xml:space="preserve"><value>Limit must be between 1 and 100.</value></data>
   <data name="RequiredField" xml:space="preserve"><value>Field {0} is required.</value></data>
   <data name="MaximumLength" xml:space="preserve"><value>Field {0} may contain no more than {1} characters.</value></data>
   <data name="InclusiveBetween" xml:space="preserve"><value>Field {0} must be between {1} and {2}.</value></data>

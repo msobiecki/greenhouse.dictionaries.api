@@ -1,5 +1,7 @@
 using Greenhouse.Dictionaries.Application;
 using Greenhouse.Dictionaries.Application.Abstractions;
+using Greenhouse.Dictionaries.Application.Configuration;
+using Greenhouse.Dictionaries.Application.DTOs;
 using Greenhouse.Dictionaries.Application.Queries;
 using Greenhouse.Dictionaries.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,14 +21,23 @@ public sealed class PlantQueryHandlerTests
             "Rosaceae", SunlightRequirement.BrightIndirectLight, WateringRequirement.WaterWhenTopLayerDry,
             "cat", ToxicityLevel.Toxic, 20, 60, Category: "Flowering");
 
-        var result = (await sender.Send(new GetPlantsQuery("rose", filters))).ToArray();
+        var result = await sender.Send(new GetPlantsQuery(
+            "rose", filters, Offset: 1, Limit: 1, OnlyRequestedLanguage: true));
 
-        Assert.Equal(2, result.Length);
-        Assert.Equal("Rose", result[0].CommonName);
-        Assert.Equal(PlantType.Flowering, result[0].Category);
+        Assert.Single(result.Items);
+        Assert.Equal("White rose", result.Items[0].CommonName);
+        Assert.Equal(PlantType.Flowering, result.Items[0].Category);
+        Assert.Equal(2, result.TotalCount);
+        Assert.True(result.HasPreviousPage);
+        Assert.False(result.HasNextPage);
+        Assert.Null(result.NextOffset);
         Assert.Equal("rose", repository.LastSearch);
         Assert.Equal("Flowering", repository.LastFilters?.Category);
         Assert.Same(filters, repository.LastFilters);
+        Assert.Equal(1, repository.LastOffset);
+        Assert.Equal(1, repository.LastLimit);
+        Assert.Equal(LanguageConfiguration.DefaultCulture, repository.LastLanguage);
+        Assert.True(repository.LastOnlyRequestedLanguage);
     }
 
     [Fact]
@@ -79,16 +90,30 @@ public sealed class PlantQueryHandlerTests
     {
         public string? LastSearch { get; private set; }
         public PlantSearchFilters? LastFilters { get; private set; }
+        public int LastOffset { get; private set; }
+        public int LastLimit { get; private set; }
+        public string LastLanguage { get; private set; } = LanguageConfiguration.DefaultCulture;
+        public bool LastOnlyRequestedLanguage { get; private set; }
 
-        public Task<IEnumerable<Plant>> GetAllAsync(
+        public Task<PagedResult<Plant>> GetAllAsync(
             string? search = null,
             PlantSearchFilters? filters = null,
+            int offset = 0,
+            int limit = 50,
+            string language = LanguageConfiguration.DefaultCulture,
+            bool onlyRequestedLanguage = false,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             LastSearch = search;
             LastFilters = filters;
-            return Task.FromResult(plants);
+            LastOffset = offset;
+            LastLimit = limit;
+            LastLanguage = language;
+            LastOnlyRequestedLanguage = onlyRequestedLanguage;
+            var allPlants = plants.ToArray();
+            return Task.FromResult(new PagedResult<Plant>(
+                allPlants.Skip(offset).Take(limit).ToArray(), offset, limit, allPlants.Length));
         }
 
         public Task<Plant?> GetByIdAsync(int id, CancellationToken cancellationToken = default)

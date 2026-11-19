@@ -170,8 +170,10 @@ public sealed class PlantsApiIntegrationTests
             "&sunlightRequirement=BrightIndirectLight&wateringRequirement=WaterWhenTopLayerDry" +
             "&toxicityTarget=cat&toxicityLevel=Toxic&temperatureC=20&humidityPercent=60");
         Assert.Equal(HttpStatusCode.OK, discoverResponse.StatusCode);
-        var discoveredPlants = await discoverResponse.Content.ReadFromJsonAsync<PlantDto[]>();
-        Assert.Equal(createdPlant.Id, Assert.Single(discoveredPlants!).Id);
+        var discoveredPlants = await discoverResponse.Content.ReadFromJsonAsync<PagedResult<PlantDto>>();
+        Assert.Equal(createdPlant.Id, Assert.Single(discoveredPlants!.Items).Id);
+        Assert.Equal(1, discoveredPlants.TotalCount);
+        Assert.False(discoveredPlants.HasNextPage);
 
         var updateResponse = await client.PutAsJsonAsync(
             $"/api/plants/{createdPlant.Id}", CreatePlant("Updated rose", "Japanese rose"));
@@ -235,6 +237,14 @@ public sealed class PlantsApiIntegrationTests
         Assert.Equal("Szczegóły toksyczności.", Assert.Single(polishPlant.ToxicityAssessments,
             assessment => assessment.TargetCode == "cat").Details);
 
+        using var exactLanguageRequest = new HttpRequestMessage(
+            HttpMethod.Get, "/api/plants?onlyRequestedLanguage=true");
+        exactLanguageRequest.Headers.AcceptLanguage.ParseAdd("pl-PL");
+        using var exactLanguageResponse = await client.SendAsync(exactLanguageRequest);
+        var exactLanguagePage = await exactLanguageResponse.Content.ReadFromJsonAsync<PagedResult<PlantDto>>();
+        Assert.Equal(1, exactLanguagePage?.TotalCount);
+        Assert.Equal(englishPlant.Id, Assert.Single(exactLanguagePage!.Items).Id);
+
         using var englishRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/plants/{englishPlant.Id}");
         englishRequest.Headers.AcceptLanguage.ParseAdd("en-US");
         using var englishResponse = await client.SendAsync(englishRequest);
@@ -244,6 +254,53 @@ public sealed class PlantsApiIntegrationTests
         Assert.Equal("Beach rose", Assert.Single(unchangedEnglishPlant!.AlternativeNames));
         Assert.Equal("Test toxicity details.", Assert.Single(unchangedEnglishPlant.ToxicityAssessments,
             assessment => assessment.TargetCode == "cat").Details);
+    }
+
+    [Fact]
+    public async Task GetPlantsSupportsOffsetAndLimit()
+    {
+        using var factory = new PlantsApiFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", ApiKey);
+
+        var firstResponse = await client.PostAsJsonAsync("/api/plants", CreatePlant("Paging plant one"));
+        var secondResponse = await client.PostAsJsonAsync("/api/plants", CreatePlant("Paging plant two"));
+        var thirdResponse = await client.PostAsJsonAsync("/api/plants", CreatePlant("Paging plant three"));
+        var second = await secondResponse.Content.ReadFromJsonAsync<PlantDto>();
+
+        using var pageResponse = await client.GetAsync("/api/plants?offset=1&limit=1");
+        var page = await pageResponse.Content.ReadFromJsonAsync<PagedResult<PlantDto>>();
+
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, thirdResponse.StatusCode);
+        Assert.Equal(second!.Id, Assert.Single(page!.Items).Id);
+        Assert.Equal(3, page.TotalCount);
+        Assert.True(page.HasPreviousPage);
+        Assert.True(page.HasNextPage);
+        Assert.Equal(2, page.NextOffset);
+
+        var lastPage = await client.GetFromJsonAsync<PagedResult<PlantDto>>("/api/plants?offset=2&limit=1");
+        Assert.NotNull(lastPage);
+        Assert.False(lastPage.HasNextPage);
+        Assert.Null(lastPage.NextOffset);
+
+        using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, "/api/plants?offset=0&limit=10");
+        fallbackRequest.Headers.AcceptLanguage.ParseAdd("pl-PL");
+        using var fallbackResponse = await client.SendAsync(fallbackRequest);
+        var fallbackPage = await fallbackResponse.Content.ReadFromJsonAsync<PagedResult<PlantDto>>();
+        Assert.Equal(3, fallbackPage?.TotalCount);
+        Assert.All(fallbackPage!.Items, plant => Assert.Equal("en-US", plant.Language));
+
+        using var exactRequest = new HttpRequestMessage(
+            HttpMethod.Get, "/api/plants?offset=0&limit=10&onlyRequestedLanguage=true");
+        exactRequest.Headers.AcceptLanguage.ParseAdd("pl-PL");
+        using var exactResponse = await client.SendAsync(exactRequest);
+        var exactPage = await exactResponse.Content.ReadFromJsonAsync<PagedResult<PlantDto>>();
+        Assert.Empty(exactPage!.Items);
+        Assert.Equal(0, exactPage.TotalCount);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/plants?offset=-1")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/plants?limit=101")).StatusCode);
     }
 
     [Fact]

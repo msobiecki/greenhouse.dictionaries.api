@@ -8,4 +8,7 @@ namespace Greenhouse.Dictionaries.Application.Queries;
 public sealed record GetPlantsQuery(
 	string? Search,
 	PlantSearchFilters? Filters = null,
-	string Language = LanguageConfiguration.DefaultCulture) : IQuery<IEnumerable<PlantDto>>;
+	string Language = LanguageConfiguration.DefaultCulture,
+	int Offset = 0,
+	int Limit = 50,
+	bool OnlyRequestedLanguage = false) : IQuery<PagedResult<PlantDto>>;

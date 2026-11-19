@@ -2,6 +2,7 @@ using Greenhouse.Dictionaries.Application;
 using Greenhouse.Dictionaries.Application.Commands;
 using Greenhouse.Dictionaries.Application.DTOs;
 using Greenhouse.Dictionaries.Application.Abstractions;
+using Greenhouse.Dictionaries.Application.Configuration;
 using Greenhouse.Dictionaries.Domain.Entities;
 using Greenhouse.Dictionaries.Presentation.Controllers;
 using Microsoft.AspNetCore.Mvc;
@@ -32,13 +33,16 @@ public class PlantsControllerTests
         var controller = provider.GetRequiredService<PlantsController>();
 
         var result = await controller.GetAll(
-            "rose", "Flowering", null, null, null, null, null, null, null, CancellationToken.None);
+            "rose", "Flowering", null, null, null, null, null, null, null,
+            0, 50, false, CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var resultPlants = Assert.IsAssignableFrom<IEnumerable<PlantDto>>(okResult.Value);
-        var resultPlant = Assert.Single(resultPlants);
+        var page = Assert.IsType<PagedResult<PlantDto>>(okResult.Value);
+        var resultPlant = Assert.Single(page.Items);
         Assert.Equal(plants[0].Id, resultPlant.Id);
         Assert.Equal(plants[0].CommonName, resultPlant.CommonName);
+        Assert.Equal(1, page.TotalCount);
+        Assert.False(page.HasNextPage);
     }
 
     [Fact]
@@ -93,11 +97,17 @@ public class PlantsControllerTests
     {
         private readonly Dictionary<int, Plant> _plants = (plants ?? []).ToDictionary(plant => plant.Id);
 
-        public Task<IEnumerable<Plant>> GetAllAsync(
+        public Task<PagedResult<Plant>> GetAllAsync(
             string? search = null,
             PlantSearchFilters? filters = null,
+            int offset = 0,
+            int limit = 50,
+            string language = LanguageConfiguration.DefaultCulture,
+            bool onlyRequestedLanguage = false,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<IEnumerable<Plant>>(_plants.Values);
+            Task.FromResult(new PagedResult<Plant>(
+                _plants.Values.OrderBy(plant => plant.Id).Skip(offset).Take(limit).ToArray(),
+                offset, limit, _plants.Count));
 
         public Task<Plant?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {

@@ -47,7 +47,7 @@ public sealed class SqlServerPlantRepositoryTests
             var result = await repository.GetAllAsync(
                 uniqueName, new PlantSearchFilters(Category: "FLOWERING"));
 
-            Assert.Equal(plant.Id, Assert.Single(result).Id);
+            Assert.Equal(plant.Id, Assert.Single(result.Items).Id);
             Assert.True(await repository.IsAlreadyExistAsync(plant.Id));
             Assert.Equal(plant.Id, (await repository.GetByIdAsync(plant.Id))?.Id);
         }

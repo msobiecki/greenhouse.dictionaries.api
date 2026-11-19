@@ -13,6 +13,8 @@
   <data name="TemperatureFilterOutOfRange" xml:space="preserve"><value>Temperatura musi mieścić się w zakresie od -50 do 60 stopni Celsjusza.</value></data>
   <data name="HumidityFilterOutOfRange" xml:space="preserve"><value>Wilgotność musi mieścić się w zakresie od 0 do 100 procent.</value></data>
   <data name="ToxicityTargetTooLong" xml:space="preserve"><value>Cel oceny toksyczności nie może przekraczać 100 znaków.</value></data>
+  <data name="OffsetMustBeNonNegative" xml:space="preserve"><value>Offset musi być równy zero lub większy.</value></data>
+  <data name="LimitOutOfRange" xml:space="preserve"><value>Limit musi mieścić się w zakresie od 1 do 100.</value></data>
   <data name="RequiredField" xml:space="preserve"><value>Pole {0} jest wymagane.</value></data>
   <data name="MaximumLength" xml:space="preserve"><value>Pole {0} może zawierać maksymalnie {1} znaków.</value></data>
   <data name="InclusiveBetween" xml:space="preserve"><value>Pole {0} musi mieścić się w zakresie od {1} do {2}.</value></data>

@@ -32,7 +32,7 @@ public sealed class SqliteDatabaseTests
             var result = await repository.GetAllAsync(
                 "ŻÓŁĆ", new PlantSearchFilters(Category: "FLOWERING"));
 
-            Assert.Equal("Żółć", Assert.Single(result).CommonName);
+            Assert.Equal("Żółć", Assert.Single(result.Items).CommonName);
         }
         finally
         {

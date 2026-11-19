@@ -26,6 +26,10 @@ public static class ApiMessages
 
     public static string ToxicityTargetTooLong => Get(nameof(ToxicityTargetTooLong));
 
+    public static string OffsetMustBeNonNegative => Get(nameof(OffsetMustBeNonNegative));
+
+    public static string LimitOutOfRange => Get(nameof(LimitOutOfRange));
+
     public static string ValidationError(ValidationFailure error)
     {
         if (error.PropertyName.EndsWith(".ScientificName", StringComparison.Ordinal) ||

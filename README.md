@@ -159,6 +159,8 @@ When running in development, the API is available at `http://localhost:5224` and
 
 `Greenhouse.Dictionaries.Api` is the application entry point and composition root. It references the Domain, Application, Infrastructure, and Presentation projects under `src/`.
 
+The plant list endpoint accepts `offset` (default `0`) and `limit` (default `50`, maximum `100`). Its response contains `items`, `offset`, `limit`, `totalCount`, `hasPreviousPage`, `hasNextPage`, and `nextOffset`. Results are ordered by plant ID before paging.
+
 ### Languages
 
 The API supports `en-US` and `pl-PL`. Send `Accept-Language` to select the language of plant text and API validation messages:
@@ -168,7 +170,7 @@ GET /api/plants/1 HTTP/1.1
 Accept-Language: pl-PL
 ```
 
-POST and PUT bodies use the language selected by `Accept-Language`. A PUT updates that language's translation while retaining other translations. Existing plant text is migrated as `en-US`. If the requested translation is unavailable, the API returns the English translation, or the only available translation when no English version exists.
+POST and PUT bodies use the language selected by `Accept-Language`. A PUT updates that language's translation while retaining other translations. Existing plant text is migrated as `en-US`. If the requested translation is unavailable, the API returns the English translation, or the only available translation when no English version exists. On `GET /api/plants`, `onlyRequestedLanguage=true` includes only plants with a translation for the requested language; when omitted or `false`, English fallback records are included too.
 
 Responses include `Content-Language` for the language actually returned. A list response can contain more than one language when some plants use a fallback; in that case the header lists the languages present. Unsupported or missing `Accept-Language` values fall back to `en-US`.
 

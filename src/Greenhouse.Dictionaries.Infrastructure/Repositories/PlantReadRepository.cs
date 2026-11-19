@@ -1,4 +1,6 @@
 using Greenhouse.Dictionaries.Application.Abstractions;
+using Greenhouse.Dictionaries.Application.Configuration;
+using Greenhouse.Dictionaries.Application.DTOs;
 using Greenhouse.Dictionaries.Domain.Entities;
 using Greenhouse.Dictionaries.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -7,9 +9,13 @@ namespace Greenhouse.Dictionaries.Infrastructure.Repositories;
 
 internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantReadRepository
 {
-    public async Task<IEnumerable<Plant>> GetAllAsync(
+    public async Task<PagedResult<Plant>> GetAllAsync(
         string? search = null,
         PlantSearchFilters? filters = null,
+        int offset = 0,
+        int limit = 50,
+        string language = LanguageConfiguration.DefaultCulture,
+        bool onlyRequestedLanguage = false,
         CancellationToken cancellationToken = default)
     {
         var category = filters?.Category;
@@ -19,7 +25,7 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
             if (!Enum.TryParse<PlantType>(category, true, out var parsedCategory) ||
                 !Enum.IsDefined(parsedCategory))
             {
-                return [];
+                return new PagedResult<Plant>([], offset, limit, 0);
             }
 
             categoryFilter = parsedCategory;
@@ -35,7 +41,7 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
                 .Include(plant => plant.ToxicityAssessments)
                     .ThenInclude(assessment => assessment.Sources)
                 .ToArrayAsync(cancellationToken);
-            return plants.Where(plant =>
+            var filteredPlants = plants.Where(plant =>
                 (string.IsNullOrWhiteSpace(search) ||
                     ContainsIgnoreCase(plant.CommonName, search) ||
                     ContainsIgnoreCase(plant.ScientificName, search) ||
@@ -73,7 +79,13 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
                         ContainsIgnoreCase(assessment.TargetCode, search) ||
                         ContainsIgnoreCase(assessment.Details, search))) &&
                 (!categoryFilter.HasValue || plant.Category == categoryFilter.Value) &&
-                MatchesFilters(plant, filters));
+                MatchesFilters(plant, filters) &&
+                MatchesLanguage(plant, language, onlyRequestedLanguage))
+                .OrderBy(plant => plant.Id)
+                .ToArray();
+            var totalCount = filteredPlants.Length;
+            var page = filteredPlants.Skip(offset).Take(limit).ToArray();
+            return new PagedResult<Plant>(page, offset, limit, totalCount);
         }
 
         IQueryable<Plant> query = dbContext.Plants
@@ -176,7 +188,31 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
             }
         }
 
-        return await query.ToArrayAsync(cancellationToken);
+        query = onlyRequestedLanguage
+            ? query.Where(plant => plant.Translations.Any(translation => translation.Language == language))
+            : query.Where(plant => !plant.Translations.Any() || plant.Translations.Any(translation =>
+                translation.Language == language || translation.Language == LanguageConfiguration.DefaultCulture));
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderBy(plant => plant.Id)
+            .Skip(offset)
+            .Take(limit)
+            .ToArrayAsync(cancellationToken);
+        return new PagedResult<Plant>(items, offset, limit, total);
+    }
+
+    private static bool MatchesLanguage(Plant plant, string language, bool onlyRequestedLanguage)
+    {
+        var hasRequestedLanguage = plant.Translations.Any(translation =>
+            string.Equals(translation.Language, language, StringComparison.OrdinalIgnoreCase));
+        if (onlyRequestedLanguage)
+        {
+            return hasRequestedLanguage;
+        }
+
+        return hasRequestedLanguage || !plant.Translations.Any() || plant.Translations.Any(translation =>
+            string.Equals(translation.Language, LanguageConfiguration.DefaultCulture, StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool ContainsIgnoreCase(string? value, string search) =>

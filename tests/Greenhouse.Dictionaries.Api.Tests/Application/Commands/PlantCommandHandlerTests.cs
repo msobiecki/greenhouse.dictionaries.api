@@ -2,6 +2,7 @@ using Greenhouse.Dictionaries.Application;
 using Greenhouse.Dictionaries.Application.Commands;
 using Greenhouse.Dictionaries.Application.DTOs;
 using Greenhouse.Dictionaries.Application.Abstractions;
+using Greenhouse.Dictionaries.Application.Configuration;
 using Greenhouse.Dictionaries.Domain.Entities;
 using Greenhouse.Dictionaries.Domain.Exceptions;
 using FluentValidation;
@@ -133,11 +134,15 @@ public class PlantCommandsTests
         private readonly Dictionary<int, Plant> _plants =
             (plants ?? []).ToDictionary(plant => plant.Id);
 
-        public Task<IEnumerable<Plant>> GetAllAsync(
+        public Task<PagedResult<Plant>> GetAllAsync(
             string? search = null,
             PlantSearchFilters? filters = null,
+            int offset = 0,
+            int limit = 50,
+            string language = LanguageConfiguration.DefaultCulture,
+            bool onlyRequestedLanguage = false,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<IEnumerable<Plant>>(_plants.Values);
+            Task.FromResult(new PagedResult<Plant>([], offset, limit, 0));
 
         public Task<Plant?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {

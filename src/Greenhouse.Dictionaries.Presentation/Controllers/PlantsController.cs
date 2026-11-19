@@ -19,7 +19,7 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
     [SwaggerOperation(Summary = "Discover plants", Description = "Search plant names, aliases and descriptions, then filter by category, family, care requirements or suitable environment.")]
-    [ProducesResponseType(typeof(IEnumerable<PlantDto>), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(PagedResult<PlantDto>), (int)HttpStatusCode.OK)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
         [FromQuery] string? category,
@@ -30,7 +30,10 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
         [FromQuery] ToxicityLevel? toxicityLevel,
         [FromQuery] decimal? temperatureC,
         [FromQuery] decimal? humidityPercent,
-        CancellationToken cancellationToken)
+        [FromQuery] int offset = 0,
+        [FromQuery] int limit = 50,
+        [FromQuery] bool onlyRequestedLanguage = false,
+        CancellationToken cancellationToken = default)
     {
         if (search?.Length > 200)
         {
@@ -57,6 +60,16 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
             return BadRequest(ApiMessages.ToxicityTargetTooLong);
         }
 
+        if (offset < 0)
+        {
+            return BadRequest(ApiMessages.OffsetMustBeNonNegative);
+        }
+
+        if (limit is < 1 or > 100)
+        {
+            return BadRequest(ApiMessages.LimitOutOfRange);
+        }
+
         var filters = new PlantSearchFilters(
             Family: family,
             SunlightRequirement: sunlightRequirement,
@@ -67,8 +80,15 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
             HumidityPercent: humidityPercent,
             Category: category);
         var plants = await mediator.Send(
-            new GetPlantsQuery(search, filters, CultureInfo.CurrentUICulture.Name), cancellationToken);
-        SetContentLanguages(plants.Select(plant => plant.Language));
+            new GetPlantsQuery(
+                search,
+                filters,
+                CultureInfo.CurrentUICulture.Name,
+                offset,
+                limit,
+                onlyRequestedLanguage),
+            cancellationToken);
+        SetContentLanguages(plants.Items.Select(plant => plant.Language));
         return Ok(plants);
     }
 
