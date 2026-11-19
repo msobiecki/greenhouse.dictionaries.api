@@ -159,8 +159,6 @@ When running in development, the API is available at `http://localhost:5224` and
 
 `Greenhouse.Dictionaries.Api` is the application entry point and composition root. It references the Domain, Application, Infrastructure, and Presentation projects under `src/`.
 
-The plant list endpoint accepts `offset` (default `0`) and `limit` (default `50`, maximum `100`). Its response contains `items`, `offset`, `limit`, `totalCount`, `hasPreviousPage`, `hasNextPage`, and `nextOffset`. Results are ordered by plant ID before paging.
-
 ### Languages
 
 The API supports `en-US` and `pl-PL`. Send `Accept-Language` to select the language of plant text and API validation messages:
