@@ -48,8 +48,8 @@ public sealed class SqlServerPlantRepositoryTests
                 uniqueName, new PlantSearchFilters(Category: "FLOWERING"));
 
             Assert.Equal(plant.Id, Assert.Single(result.Items).Id);
-            Assert.True(await repository.IsAlreadyExistAsync(plant.Id));
-            Assert.Equal(plant.Id, (await repository.GetByIdAsync(plant.Id))?.Id);
+            Assert.True(await repository.IsAlreadyExistAsync(plant.Uid));
+            Assert.Equal(plant.Uid, (await repository.GetByUidAsync(plant.Uid))?.Uid);
         }
         finally
         {

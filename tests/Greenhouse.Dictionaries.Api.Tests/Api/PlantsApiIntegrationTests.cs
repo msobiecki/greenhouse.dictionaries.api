@@ -28,13 +28,17 @@ public sealed class PlantsApiIntegrationTests
         Assert.Equal(HttpStatusCode.Unauthorized,
             (await client.PostAsJsonAsync("/api/plants", CreatePlant())).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized,
-            (await client.PutAsJsonAsync("/api/plants/1", CreatePlant())).StatusCode);
+            (await client.PutAsJsonAsync($"/api/plants/{Guid.NewGuid()}", CreatePlant())).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized,
-            (await client.DeleteAsync("/api/plants/1")).StatusCode);
+            (await client.DeleteAsync($"/api/plants/{Guid.NewGuid()}")).StatusCode);
 
         client.DefaultRequestHeaders.Add("X-API-Key", "incorrect-api-key-for-tests-32chars");
         Assert.Equal(HttpStatusCode.Unauthorized,
             (await client.PostAsJsonAsync("/api/plants", CreatePlant())).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.PutAsJsonAsync($"/api/plants/{Guid.NewGuid()}", CreatePlant())).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.DeleteAsync($"/api/plants/{Guid.NewGuid()}")).StatusCode);
     }
 
     [Theory]
@@ -63,7 +67,7 @@ public sealed class PlantsApiIntegrationTests
         using var document = JsonDocument.Parse(await client.GetStringAsync("/swagger/v1/swagger.json"));
         var paths = document.RootElement.GetProperty("paths");
         var plantsPath = paths.GetProperty("/api/plants");
-        var plantByIdPath = paths.GetProperty("/api/plants/{id}");
+        var plantByIdPath = paths.GetProperty("/api/plants/{uid}");
 
         Assert.False(plantsPath.GetProperty("get").TryGetProperty("security", out _));
         Assert.True(plantsPath.GetProperty("post").TryGetProperty("security", out _));
@@ -131,13 +135,20 @@ public sealed class PlantsApiIntegrationTests
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-API-Key", ApiKey);
 
-        var createResponse = await client.PostAsJsonAsync("/api/plants", CreatePlant());
+        var clientSuppliedUid = Guid.NewGuid();
+        var createInput = JsonSerializer.SerializeToNode(CreatePlant(), JsonSerializerOptions.Web)!;
+        createInput["uid"] = clientSuppliedUid;
+        createInput["id"] = int.MaxValue;
+        var createResponse = await client.PostAsJsonAsync("/api/plants", createInput);
 
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         Assert.NotNull(createResponse.Headers.Location);
         var createdPlant = await createResponse.Content.ReadFromJsonAsync<PlantDto>();
         Assert.NotNull(createdPlant);
-        Assert.True(createdPlant.Id > 0);
+        AssertVersion4Uid(createdPlant.Uid);
+        Assert.NotEqual(clientSuppliedUid, createdPlant.Uid);
+        Assert.EndsWith($"/api/plants/{createdPlant.Uid:D}", createResponse.Headers.Location.ToString());
+        await AssertNoInternalIdentifiers(createResponse);
         Assert.Equal("East Asia", createdPlant.NativeRange);
         Assert.Equal("Coastal forests", createdPlant.Habitat);
         Assert.Equal(15m, createdPlant.TemperatureMinC);
@@ -170,17 +181,29 @@ public sealed class PlantsApiIntegrationTests
             "&sunlightRequirement=BrightIndirectLight&wateringRequirement=WaterWhenTopLayerDry" +
             "&toxicityTarget=cat&toxicityLevel=Toxic&temperatureC=20&humidityPercent=60");
         Assert.Equal(HttpStatusCode.OK, discoverResponse.StatusCode);
+        await AssertNoInternalIdentifiers(discoverResponse);
         var discoveredPlants = await discoverResponse.Content.ReadFromJsonAsync<PagedResult<PlantDto>>();
-        Assert.Equal(createdPlant.Id, Assert.Single(discoveredPlants!.Items).Id);
+        Assert.Equal(createdPlant.Uid, Assert.Single(discoveredPlants!.Items).Uid);
         Assert.Equal(1, discoveredPlants.TotalCount);
         Assert.False(discoveredPlants.HasNextPage);
 
+        var forgedUid = Guid.NewGuid();
+        var updateInput = JsonSerializer.SerializeToNode(
+            CreatePlant("Updated rose", "Japanese rose"), JsonSerializerOptions.Web)!;
+        updateInput["uid"] = forgedUid;
+        updateInput["id"] = int.MaxValue;
         var updateResponse = await client.PutAsJsonAsync(
-            $"/api/plants/{createdPlant.Id}", CreatePlant("Updated rose", "Japanese rose"));
+            $"/api/plants/{createdPlant.Uid}", updateInput);
         Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
 
-        var getResponse = await client.GetAsync($"/api/plants/{createdPlant.Id}");
+        var getResponse = await client.GetAsync($"/api/plants/{createdPlant.Uid}");
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+        await AssertNoInternalIdentifiers(getResponse);
         var updatedPlant = await getResponse.Content.ReadFromJsonAsync<PlantDto>();
+        Assert.Equal(createdPlant.Uid, updatedPlant?.Uid);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/plants/{forgedUid}")).StatusCode);
+        var updatedPage = await client.GetFromJsonAsync<PagedResult<PlantDto>>("/api/plants");
+        Assert.Equal(createdPlant.Uid, Assert.Single(updatedPage!.Items).Uid);
         Assert.Equal("Updated rose", updatedPlant?.CommonName);
         Assert.Equal("East Asia", updatedPlant?.NativeRange);
         Assert.Equal("Coastal forests", updatedPlant?.Habitat);
@@ -192,10 +215,10 @@ public sealed class PlantsApiIntegrationTests
         Assert.Equal("Japanese rose", Assert.Single(updatedPlant!.AlternativeNames));
         Assert.Contains(updatedPlant.ToxicityAssessments, assessment => assessment.TargetCode == "rabbit");
 
-        var deleteResponse = await client.DeleteAsync($"/api/plants/{createdPlant.Id}");
+        var deleteResponse = await client.DeleteAsync($"/api/plants/{createdPlant.Uid}");
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound,
-            (await client.GetAsync($"/api/plants/{createdPlant.Id}")).StatusCode);
+            (await client.GetAsync($"/api/plants/{createdPlant.Uid}")).StatusCode);
     }
 
     [Fact]
@@ -211,14 +234,14 @@ public sealed class PlantsApiIntegrationTests
         var englishPlant = await createResponse.Content.ReadFromJsonAsync<PlantDto>();
         Assert.NotNull(englishPlant);
 
-        using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/plants/{englishPlant.Id}");
+        using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/plants/{englishPlant.Uid}");
         fallbackRequest.Headers.AcceptLanguage.ParseAdd("pl-PL");
         using var fallbackResponse = await client.SendAsync(fallbackRequest);
         var fallbackPlant = await fallbackResponse.Content.ReadFromJsonAsync<PlantDto>();
         Assert.Equal("en-US", Assert.Single(fallbackResponse.Content.Headers.ContentLanguage));
         Assert.Equal("Rugosa rose", fallbackPlant?.CommonName);
 
-        using var updateRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/plants/{englishPlant.Id}")
+        using var updateRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/plants/{englishPlant.Uid}")
         {
             Content = JsonContent.Create(CreatePlant(
                 "Róża pomarszczona", "Róża japońska", "Szczegóły toksyczności."))
@@ -227,7 +250,7 @@ public sealed class PlantsApiIntegrationTests
         using var updateResponse = await client.SendAsync(updateRequest);
         Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
 
-        using var polishRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/plants/{englishPlant.Id}");
+        using var polishRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/plants/{englishPlant.Uid}");
         polishRequest.Headers.AcceptLanguage.ParseAdd("pl-PL");
         using var polishResponse = await client.SendAsync(polishRequest);
         var polishPlant = await polishResponse.Content.ReadFromJsonAsync<PlantDto>();
@@ -243,9 +266,9 @@ public sealed class PlantsApiIntegrationTests
         using var exactLanguageResponse = await client.SendAsync(exactLanguageRequest);
         var exactLanguagePage = await exactLanguageResponse.Content.ReadFromJsonAsync<PagedResult<PlantDto>>();
         Assert.Equal(1, exactLanguagePage?.TotalCount);
-        Assert.Equal(englishPlant.Id, Assert.Single(exactLanguagePage!.Items).Id);
+        Assert.Equal(englishPlant.Uid, Assert.Single(exactLanguagePage!.Items).Uid);
 
-        using var englishRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/plants/{englishPlant.Id}");
+        using var englishRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/plants/{englishPlant.Uid}");
         englishRequest.Headers.AcceptLanguage.ParseAdd("en-US");
         using var englishResponse = await client.SendAsync(englishRequest);
         var unchangedEnglishPlant = await englishResponse.Content.ReadFromJsonAsync<PlantDto>();
@@ -274,7 +297,7 @@ public sealed class PlantsApiIntegrationTests
         Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Created, thirdResponse.StatusCode);
-        Assert.Equal(second!.Id, Assert.Single(page!.Items).Id);
+        Assert.Equal(second!.Uid, Assert.Single(page!.Items).Uid);
         Assert.Equal(3, page.TotalCount);
         Assert.True(page.HasPreviousPage);
         Assert.True(page.HasNextPage);
@@ -335,12 +358,98 @@ public sealed class PlantsApiIntegrationTests
         Assert.Equal((HttpStatusCode)422, invalidResponse.StatusCode);
         Assert.Contains("CommonName", await invalidResponse.Content.ReadAsStringAsync());
 
-        var missingResponse = await client.DeleteAsync("/api/plants/404");
+        var missingUid = Guid.NewGuid();
+        var missingResponse = await client.DeleteAsync($"/api/plants/{missingUid}");
         Assert.Equal(HttpStatusCode.NotFound, missingResponse.StatusCode);
-        Assert.Contains("404", await missingResponse.Content.ReadAsStringAsync());
+        Assert.Contains(missingUid.ToString(), await missingResponse.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.BadRequest,
             (await client.GetAsync("/api/plants?temperatureC=100")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("404")]
+    [InlineData("-1")]
+    [InlineData("not-a-guid")]
+    [InlineData("00000000-0000-4000-8000-00000000000z")]
+    public async Task NumericAndMalformedRoutesAreRejectedWithoutChangingPlants(string identifier)
+    {
+        using var factory = new PlantsApiFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", ApiKey);
+        using var createResponse = await client.PostAsJsonAsync("/api/plants", CreatePlant());
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var originalList = await client.GetStringAsync("/api/plants");
+
+        using var getResponse = await client.GetAsync($"/api/plants/{identifier}");
+        using var putResponse = await client.PutAsJsonAsync(
+            $"/api/plants/{identifier}", CreatePlant("Must not replace the original"));
+        using var deleteResponse = await client.DeleteAsync($"/api/plants/{identifier}");
+
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, putResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+        Assert.Equal(originalList, await client.GetStringAsync("/api/plants"));
+    }
+
+    [Fact]
+    public async Task UnknownUidReturnsNotFoundWithoutChangingPlants()
+    {
+        using var factory = new PlantsApiFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", ApiKey);
+        using var createResponse = await client.PostAsJsonAsync("/api/plants", CreatePlant());
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var originalList = await client.GetStringAsync("/api/plants");
+        var missingUid = Guid.NewGuid();
+
+        using var getResponse = await client.GetAsync($"/api/plants/{missingUid}");
+        using var putResponse = await client.PutAsJsonAsync(
+            $"/api/plants/{missingUid}", CreatePlant("Must not be inserted"));
+        using var deleteResponse = await client.DeleteAsync($"/api/plants/{missingUid}");
+
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, putResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+        Assert.Equal(originalList, await client.GetStringAsync("/api/plants"));
+    }
+
+    private static void AssertVersion4Uid(Guid uid) => Assert.Matches(
+        "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        uid.ToString("D"));
+
+    private static async Task AssertNoInternalIdentifiers(HttpResponseMessage response)
+    {
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        AssertNoInternalIdentifiers(document.RootElement);
+    }
+
+    private static void AssertNoInternalIdentifiers(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                Assert.False(property.Name.Equals("id", StringComparison.OrdinalIgnoreCase),
+                    $"Internal ID exposed in {element}");
+                Assert.False(property.Name.Equals("plantId", StringComparison.OrdinalIgnoreCase)
+                    && property.Value.ValueKind == JsonValueKind.Number,
+                    $"Internal plant foreign key exposed in {element}");
+                if (property.Name.Equals("uid", StringComparison.OrdinalIgnoreCase))
+                {
+                    AssertVersion4Uid(property.Value.GetGuid());
+                }
+                AssertNoInternalIdentifiers(property.Value);
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                AssertNoInternalIdentifiers(item);
+            }
+        }
     }
 
     private static PlantInputDto CreatePlant(

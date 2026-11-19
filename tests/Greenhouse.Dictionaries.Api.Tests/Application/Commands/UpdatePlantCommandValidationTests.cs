@@ -13,7 +13,7 @@ public class UpdatePlantCommandValidationTests
     [Fact]
     public void Validate_AcceptsPlantWithRequiredFields()
     {
-        var result = _validator.TestValidate(new UpdatePlantCommand(1, CreatePlant()));
+        var result = _validator.TestValidate(new UpdatePlantCommand(Guid.NewGuid(), CreatePlant()));
 
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -23,19 +23,17 @@ public class UpdatePlantCommandValidationTests
     {
         var plant = CreatePlant() with { CommonName = " " };
 
-        var result = _validator.TestValidate(new UpdatePlantCommand(1, plant));
+        var result = _validator.TestValidate(new UpdatePlantCommand(Guid.NewGuid(), plant));
 
         result.ShouldHaveValidationErrorFor(command => command.Plant.CommonName);
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void Validate_RejectsNonPositiveId(int id)
+    [Fact]
+    public void Validate_RejectsEmptyUid()
     {
-        var result = _validator.TestValidate(new UpdatePlantCommand(id, CreatePlant()));
+        var result = _validator.TestValidate(new UpdatePlantCommand(Guid.Empty, CreatePlant()));
 
-        result.ShouldHaveValidationErrorFor(command => command.Id);
+        result.ShouldHaveValidationErrorFor(command => command.Uid);
     }
 
     [Fact]
@@ -51,7 +49,7 @@ public class UpdatePlantCommandValidationTests
             IdentifyingCharacteristics = ""
         };
 
-        var result = _validator.TestValidate(new UpdatePlantCommand(1, plant));
+        var result = _validator.TestValidate(new UpdatePlantCommand(Guid.NewGuid(), plant));
 
         result.ShouldHaveValidationErrorFor(command => command.Plant.ScientificName);
         result.ShouldHaveValidationErrorFor(command => command.Plant.CommonName);

@@ -12,7 +12,7 @@ public static class ApiMessages
 
     public static string InvalidCommand => Get(nameof(InvalidCommand));
 
-    public static string PlantNotFound(int id) => Get(nameof(PlantNotFound), id);
+    public static string PlantNotFound(Guid uid) => Get(nameof(PlantNotFound), uid);
 
     public static string PlantAlreadyExists(int id) => Get(nameof(PlantAlreadyExists), id);
 

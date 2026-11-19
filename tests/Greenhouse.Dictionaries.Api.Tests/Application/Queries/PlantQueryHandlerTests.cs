@@ -47,10 +47,10 @@ public sealed class PlantQueryHandlerTests
         using var provider = CreateProvider(new StubPlantReadRepository([plant]));
         var sender = provider.GetRequiredService<MediatR.ISender>();
 
-        var result = await sender.Send(new GetPlantByIdQuery(7));
+        var result = await sender.Send(new GetPlantByIdQuery(plant.Uid));
 
         Assert.NotNull(result);
-        Assert.Equal(7, result.Id);
+        Assert.Equal(plant.Uid, result.Uid);
         Assert.Equal(plant.CommonName, result.CommonName);
         Assert.Equal(plant.CreatedAt, result.CreatedAt);
     }
@@ -61,7 +61,7 @@ public sealed class PlantQueryHandlerTests
         using var provider = CreateProvider(new StubPlantReadRepository([]));
         var sender = provider.GetRequiredService<MediatR.ISender>();
 
-        var result = await sender.Send(new GetPlantByIdQuery(404));
+        var result = await sender.Send(new GetPlantByIdQuery(Guid.NewGuid()));
 
         Assert.Null(result);
     }
@@ -116,16 +116,16 @@ public sealed class PlantQueryHandlerTests
                 allPlants.Skip(offset).Take(limit).ToArray(), offset, limit, allPlants.Length));
         }
 
-        public Task<Plant?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+        public Task<Plant?> GetByUidAsync(Guid uid, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(plants.FirstOrDefault(plant => plant.Id == id));
+            return Task.FromResult(plants.FirstOrDefault(plant => plant.Uid == uid));
         }
 
-        public Task<bool> IsAlreadyExistAsync(int id, CancellationToken cancellationToken = default)
+        public Task<bool> IsAlreadyExistAsync(Guid uid, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(plants.Any(plant => plant.Id == id));
+            return Task.FromResult(plants.Any(plant => plant.Uid == uid));
         }
     }
 }

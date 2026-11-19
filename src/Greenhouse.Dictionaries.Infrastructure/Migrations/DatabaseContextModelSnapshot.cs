@@ -149,6 +149,9 @@ namespace Greenhouse.Dictionaries.Infrastructure.Migrations
                         .HasPrecision(4, 1)
                         .HasColumnType("decimal(4,1)");
 
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2(0)");
 
@@ -161,6 +164,9 @@ namespace Greenhouse.Dictionaries.Infrastructure.Migrations
                         .HasColumnType("nvarchar(40)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Uid")
+                        .IsUnique();
 
                     b.ToTable("Plants", "greenhouse");
                 });

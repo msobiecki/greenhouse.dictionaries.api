@@ -2,12 +2,12 @@ namespace Greenhouse.Dictionaries.Domain.Exceptions;
 
 public sealed class PlantNotFoundException : BaseException
 {
-    public int PlantId { get; }
+    public Guid PlantUid { get; }
 
-    public PlantNotFoundException(int plantId)
-        : base($"Plant with ID '{plantId}' was not found.")
+    public PlantNotFoundException(Guid plantUid)
+        : base($"Plant with UID '{plantUid}' was not found.")
     {
-        PlantId = plantId;
+        PlantUid = plantUid;
     }
 
 }

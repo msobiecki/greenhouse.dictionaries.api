@@ -11,7 +11,7 @@ public sealed class GetPlantByIdQueryHandler(IPlantReadRepository plantRepositor
 {
     public async Task<PlantDto?> Handle(GetPlantByIdQuery request, CancellationToken cancellationToken)
     {
-        var plant = await plantRepository.GetByIdAsync(request.Id, cancellationToken);
+        var plant = await plantRepository.GetByUidAsync(request.Uid, cancellationToken);
         return plant is null ? null : PlantLocalization.ToDto(mapper, plant, request.Language);
     }
 }

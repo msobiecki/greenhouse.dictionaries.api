@@ -159,12 +159,33 @@ When running in development, the API is available at `http://localhost:5224` and
 
 `Greenhouse.Dictionaries.Api` is the application entry point and composition root. It references the Domain, Application, Infrastructure, and Presentation projects under `src/`.
 
+### Public Identifiers
+
+Plant responses expose a random UUID v4 as `uid`, never the internal numeric `id`.
+Use the returned UID for `GET`, `PUT` and `DELETE /api/plants/{uid}`. A successful
+POST returns the UID in its body and in the `Location` header. Clients cannot assign
+or change it through POST or PUT; updating or translating a plant preserves its UID.
+Numeric and malformed identifiers do not match these routes and return 404.
+
+This is a breaking API change: replace any client use of `id` with `uid`. The
+`AddPlantPublicUid` migration assigns distinct random UIDs to existing plants and
+adds a unique index without changing numeric primary keys or relationships. Pending
+migrations are applied at application startup. Replace `plantUid` in the sample
+HTTP requests with a UID returned by your API.
+
+UIDs prevent guessing sequential identifiers, but are not authorization tokens.
+GET endpoints, including the paginated catalog, remain anonymous, so the public
+catalog can still be enumerated through its list endpoint. PUT and DELETE still
+require the API key. Restrict read access and add rate limiting at the API gateway
+or application boundary if catalog scraping must also be prevented. Do not treat
+an unguessable UID as a replacement for access control.
+
 ### Languages
 
 The API supports `en-US` and `pl-PL`. Send `Accept-Language` to select the language of plant text and API validation messages:
 
 ```http
-GET /api/plants/1 HTTP/1.1
+GET /api/plants/3f627f93-3f21-4979-b7f2-27cb4d3dcb79 HTTP/1.1
 Accept-Language: pl-PL
 ```
 

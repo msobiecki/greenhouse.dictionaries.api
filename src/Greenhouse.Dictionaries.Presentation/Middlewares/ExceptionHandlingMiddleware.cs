@@ -26,7 +26,7 @@ public sealed class ExceptionHandlingMiddleware(ILogger<ExceptionHandlingMiddlew
         var statusCode = GetStatusCode(exception);
         var message = exception switch
         {
-            PlantNotFoundException notFound => ApiMessages.PlantNotFound(notFound.PlantId),
+            PlantNotFoundException notFound => ApiMessages.PlantNotFound(notFound.PlantUid),
             PlantAlreadyExistsException alreadyExists => ApiMessages.PlantAlreadyExists(alreadyExists.PlantId),
             ValidationException => ApiMessages.InvalidCommand,
             BaseException => exception.Message,

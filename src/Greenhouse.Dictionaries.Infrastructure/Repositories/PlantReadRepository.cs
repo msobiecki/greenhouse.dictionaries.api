@@ -240,7 +240,7 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
                 plant.HumidityMinPercent <= filters.HumidityPercent && plant.HumidityMaxPercent >= filters.HumidityPercent);
     }
 
-    public Task<Plant?> GetByIdAsync(int id, CancellationToken cancellationToken = default) =>
+    public Task<Plant?> GetByUidAsync(Guid uid, CancellationToken cancellationToken = default) =>
         dbContext.Plants
             .AsNoTracking()
             .Include(plant => plant.Translations)
@@ -248,8 +248,8 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
             .Include(plant => plant.Images)
             .Include(plant => plant.ToxicityAssessments)
                 .ThenInclude(assessment => assessment.Sources)
-            .FirstOrDefaultAsync(plant => plant.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(plant => plant.Uid == uid, cancellationToken);
 
-    public Task<bool> IsAlreadyExistAsync(int id, CancellationToken cancellationToken = default) =>
-        dbContext.Plants.AnyAsync(plant => plant.Id == id, cancellationToken);
+    public Task<bool> IsAlreadyExistAsync(Guid uid, CancellationToken cancellationToken = default) =>
+        dbContext.Plants.AnyAsync(plant => plant.Uid == uid, cancellationToken);
 }

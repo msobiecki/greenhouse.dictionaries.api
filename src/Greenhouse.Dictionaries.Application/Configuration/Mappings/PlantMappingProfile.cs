@@ -30,6 +30,7 @@ public sealed class PlantMappingProfile : Profile
             .ForMember(translation => translation.AlternativeNamesJson,
                 options => options.MapFrom(dto => JsonSerializer.Serialize(dto.AlternativeNames ?? Array.Empty<string>())));
         CreateMap<PlantInputDto, Plant>()
+            .ForMember(plant => plant.Uid, options => options.Ignore())
             .ForMember(plant => plant.AlternativeNames,
                 options => options.MapFrom(dto => dto.AlternativeNames ?? Array.Empty<string>()))
             .ForMember(plant => plant.ToxicityAssessments,

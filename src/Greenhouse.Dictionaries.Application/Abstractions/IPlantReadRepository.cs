@@ -15,7 +15,7 @@ public interface IPlantReadRepository
         bool onlyRequestedLanguage = false,
         CancellationToken cancellationToken = default);
 
-    Task<Plant?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<Plant?> GetByUidAsync(Guid uid, CancellationToken cancellationToken = default);
 
-    Task<bool> IsAlreadyExistAsync(int id, CancellationToken cancellationToken = default);
+    Task<bool> IsAlreadyExistAsync(Guid uid, CancellationToken cancellationToken = default);
 }

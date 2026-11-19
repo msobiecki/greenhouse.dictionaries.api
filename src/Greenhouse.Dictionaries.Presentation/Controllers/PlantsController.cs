@@ -92,13 +92,13 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
         return Ok(plants);
     }
 
-    [HttpGet("{id}")]
-    [SwaggerOperation(Summary = "Get plant by ID", Description = "Retrieve a single plant by its unique ID.")]
+    [HttpGet("{uid:guid}")]
+    [SwaggerOperation(Summary = "Get plant by UID", Description = "Retrieve a single plant by its random public UUID.")]
     [ProducesResponseType(typeof(PlantDto), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.NotFound)]
-    public async Task<IActionResult> GetById([FromRoute] int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetByUid([FromRoute] Guid uid, CancellationToken cancellationToken)
     {
-        var plant = await mediator.Send(new GetPlantByIdQuery(id, CultureInfo.CurrentUICulture.Name), cancellationToken);
+        var plant = await mediator.Send(new GetPlantByIdQuery(uid, CultureInfo.CurrentUICulture.Name), cancellationToken);
         if (plant is not null)
         {
             SetContentLanguages([plant.Language]);
@@ -117,10 +117,10 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
         var createdPlant = await mediator.Send(
             new AddPlantCommand(plant, CultureInfo.CurrentUICulture.Name), cancellationToken);
         SetContentLanguages([createdPlant.Language]);
-        return CreatedAtAction(nameof(GetById), new { id = createdPlant.Id }, createdPlant);
+        return CreatedAtAction(nameof(GetByUid), new { uid = createdPlant.Uid }, createdPlant);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{uid:guid}")]
     [Authorize(Policy = "CatalogWrite")]
     [SwaggerOperation(Summary = "Update a plant", Description = "Update the details of an existing plant by its ID.")]
     [ProducesResponseType((int)HttpStatusCode.NoContent)]
@@ -128,23 +128,23 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
     [ProducesResponseType((int)HttpStatusCode.NotFound)]
     [ProducesResponseType((int)HttpStatusCode.UnprocessableEntity)]
     public async Task<IActionResult> Update(
-        [FromRoute] int id,
+        [FromRoute] Guid uid,
         [FromBody] PlantInputDto plant,
         CancellationToken cancellationToken)
     {
-        await mediator.Send(new UpdatePlantCommand(id, plant, CultureInfo.CurrentUICulture.Name), cancellationToken);
+        await mediator.Send(new UpdatePlantCommand(uid, plant, CultureInfo.CurrentUICulture.Name), cancellationToken);
         return NoContent();
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{uid:guid}")]
     [Authorize(Policy = "CatalogWrite")]
     [SwaggerOperation(Summary = "Delete a plant", Description = "Delete an existing plant by its ID.")]
     [ProducesResponseType((int)HttpStatusCode.NoContent)]
     [ProducesResponseType((int)HttpStatusCode.Unauthorized)]
     [ProducesResponseType((int)HttpStatusCode.NotFound)]
-    public async Task<IActionResult> Delete([FromRoute] int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete([FromRoute] Guid uid, CancellationToken cancellationToken)
     {
-        await mediator.Send(new DeletePlantCommand(id), cancellationToken);
+        await mediator.Send(new DeletePlantCommand(uid), cancellationToken);
         return NoContent();
     }
 

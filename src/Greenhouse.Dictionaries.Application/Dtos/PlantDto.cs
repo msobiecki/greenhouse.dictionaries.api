@@ -4,7 +4,7 @@ using Greenhouse.Dictionaries.Application.Configuration;
 namespace Greenhouse.Dictionaries.Application.DTOs;
 
 public sealed record PlantDto(
-    int Id,
+    Guid Uid,
     string ScientificName,
     string CommonName,
     string[] AlternativeNames,

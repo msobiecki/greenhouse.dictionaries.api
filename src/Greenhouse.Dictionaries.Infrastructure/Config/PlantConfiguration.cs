@@ -10,6 +10,8 @@ public class PlantConfiguration : BaseEntityConfiguration<Plant>
     {
         builder.ToTable("Plants");
 
+        builder.Property(p => p.Uid).IsRequired().ValueGeneratedNever();
+        builder.HasIndex(p => p.Uid).IsUnique();
         builder.Property(p => p.ScientificName).IsRequired();
         builder.Property(p => p.CommonName).IsRequired();
         builder.Property(p => p.Category).HasConversion<string>().HasMaxLength(50).IsRequired();

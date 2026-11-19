@@ -2,6 +2,7 @@ namespace Greenhouse.Dictionaries.Domain.Entities;
 
 public class Plant : Entity
 {
+    public Guid Uid { get; private set; } = Guid.NewGuid();
     public required string ScientificName { get; set; }
     public required string CommonName { get; set; }
     public List<PlantAlias> AlternativeNames { get; set; } = [];

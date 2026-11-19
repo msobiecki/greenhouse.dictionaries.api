@@ -1,4 +1,6 @@
 @Greenhouse.Dictionaries.Api_HostAddress = http://localhost:5224
+@plantUid = 3f627f93-3f21-4979-b7f2-27cb4d3dcb79
+@apiKey = {{$processEnv Security__ApiKey}}
 
 GET {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants
 Accept: application/json
@@ -15,13 +17,14 @@ Accept: application/json
 
 ###
 
-GET {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants/1
+GET {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants/{{plantUid}}
 Accept: application/json
 
 ###
 
 POST {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants
 Content-Type: application/json
+X-API-Key: {{apiKey}}
 
 {
 	"scientificName": "Monstera deliciosa",
@@ -80,8 +83,9 @@ Content-Type: application/json
 
 ###
 
-PUT {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants/1
+PUT {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants/{{plantUid}}
 Content-Type: application/json
+X-API-Key: {{apiKey}}
 
 {
 	"scientificName": "Monstera deliciosa",
@@ -137,3 +141,8 @@ Content-Type: application/json
 		}
 	]
 }
+
+###
+
+DELETE {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants/{{plantUid}}
+X-API-Key: {{apiKey}}

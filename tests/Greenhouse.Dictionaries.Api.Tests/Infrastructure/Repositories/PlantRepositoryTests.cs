@@ -98,23 +98,23 @@ public sealed class PlantRepositoryTests
             services.GetRequiredService<DatabaseContext>().ChangeTracker.Clear();
 
             Assert.True(rose.Id > 0);
-            Assert.True(await readRepository.IsAlreadyExistAsync(rose.Id));
-            Assert.False(await readRepository.IsAlreadyExistAsync(int.MaxValue));
-            Assert.Equal(rose.Id, (await readRepository.GetByIdAsync(rose.Id))?.Id);
-            Assert.Null(await readRepository.GetByIdAsync(int.MaxValue));
+            Assert.True(await readRepository.IsAlreadyExistAsync(rose.Uid));
+            Assert.False(await readRepository.IsAlreadyExistAsync(Guid.NewGuid()));
+            Assert.Equal(rose.Uid, (await readRepository.GetByUidAsync(rose.Uid))?.Uid);
+            Assert.Null(await readRepository.GetByUidAsync(Guid.NewGuid()));
             Assert.Equal("Rugosa rose", Assert.Single((await readRepository.GetAllAsync("rugosa")).Items).CommonName);
             Assert.Equal(2, (await readRepository.GetAllAsync(
                 filters: new PlantSearchFilters(Category: "FLOWERING"))).TotalCount);
             Assert.Equal(2, (await readRepository.GetAllAsync(search: "Rosaceae")).TotalCount);
             Assert.Equal("Rugosa rose", Assert.Single((await readRepository.GetAllAsync("beach rose")).Items).CommonName);
             Assert.Equal(3, (await readRepository.GetAllAsync()).TotalCount);
-            var loadedRose = await readRepository.GetByIdAsync(rose.Id);
+            var loadedRose = await readRepository.GetByUidAsync(rose.Uid);
             Assert.NotNull(loadedRose);
             Assert.Equal("East Asia", loadedRose.NativeRange);
             Assert.Equal("Beach rose", Assert.Single(loadedRose.AlternativeNames).Name);
             Assert.Equal("CC BY 4.0", Assert.Single(loadedRose.Images).License);
 
-            var detachedRose = await readRepository.GetByIdAsync(rose.Id);
+            var detachedRose = await readRepository.GetByUidAsync(rose.Uid);
             Assert.NotNull(detachedRose);
             Assert.Equal(EntityState.Detached, services.GetRequiredService<DatabaseContext>().Entry(detachedRose).State);
 
@@ -123,14 +123,15 @@ public sealed class PlantRepositoryTests
             detachedRose.Images = [];
             await writeRepository.UpdateAsync(detachedRose);
             await unitOfWork.SaveChangesAsync();
-            var updatedRose = await readRepository.GetByIdAsync(rose.Id);
+            var updatedRose = await readRepository.GetByUidAsync(rose.Uid);
+            Assert.Equal(rose.Uid, updatedRose?.Uid);
             Assert.Equal("Updated rose", updatedRose?.CommonName);
             Assert.Equal("Japanese rose", Assert.Single(updatedRose!.AlternativeNames).Name);
             Assert.Empty(updatedRose.Images);
 
             await writeRepository.DeleteAsync(tree);
             await unitOfWork.SaveChangesAsync();
-            Assert.False(await readRepository.IsAlreadyExistAsync(tree.Id));
+            Assert.False(await readRepository.IsAlreadyExistAsync(tree.Uid));
         }
         finally
         {

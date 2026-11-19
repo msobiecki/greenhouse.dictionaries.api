@@ -4,4 +4,4 @@ using Greenhouse.Dictionaries.Application.DTOs;
 
 namespace Greenhouse.Dictionaries.Application.Queries;
 
-public sealed record GetPlantByIdQuery(int Id, string Language = LanguageConfiguration.DefaultCulture) : IQuery<PlantDto?>;
+public sealed record GetPlantByIdQuery(Guid Uid, string Language = LanguageConfiguration.DefaultCulture) : IQuery<PlantDto?>;

@@ -16,7 +16,7 @@ public sealed class UpdatePlantCommandHandler(
 {
     public async Task<PlantDto> Handle(UpdatePlantCommand request, CancellationToken cancellationToken)
     {
-        var plant = await plantReadRepository.GetByIdAsync(request.Id, cancellationToken) ?? throw new PlantNotFoundException(request.Id);
+        var plant = await plantReadRepository.GetByUidAsync(request.Uid, cancellationToken) ?? throw new PlantNotFoundException(request.Uid);
         mapper.Map(request.Plant, plant);
         var translation = plant.Translations.FirstOrDefault(item =>
             string.Equals(item.Language, request.Language, StringComparison.OrdinalIgnoreCase));

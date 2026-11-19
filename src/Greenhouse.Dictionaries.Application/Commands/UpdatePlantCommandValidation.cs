@@ -7,7 +7,7 @@ public sealed class UpdatePlantCommandValidation : AbstractValidator<UpdatePlant
 {
     public UpdatePlantCommandValidation()
     {
-        RuleFor(command => command.Id).GreaterThan(0);
+        RuleFor(command => command.Uid).NotEmpty();
         RuleFor(command => command.Plant.ScientificName).NotEmpty();
         RuleFor(command => command.Plant.CommonName).NotEmpty();
         RuleFor(command => command.Plant.Family).NotEmpty();

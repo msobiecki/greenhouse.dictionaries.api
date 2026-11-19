@@ -39,25 +39,25 @@ public class PlantsControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var page = Assert.IsType<PagedResult<PlantDto>>(okResult.Value);
         var resultPlant = Assert.Single(page.Items);
-        Assert.Equal(plants[0].Id, resultPlant.Id);
+        Assert.Equal(plants[0].Uid, resultPlant.Uid);
         Assert.Equal(plants[0].CommonName, resultPlant.CommonName);
         Assert.Equal(1, page.TotalCount);
         Assert.False(page.HasNextPage);
     }
 
     [Fact]
-    public async Task GetById_ReturnsNotFoundWhenPlantDoesNotExist()
+    public async Task GetByUid_ReturnsNotFoundWhenPlantDoesNotExist()
     {
         using var provider = CreateServiceProvider(new StubPlantRepository());
         var controller = provider.GetRequiredService<PlantsController>();
 
-        var result = await controller.GetById(999, CancellationToken.None);
+        var result = await controller.GetByUid(Guid.NewGuid(), CancellationToken.None);
 
         Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]
-    public async Task Update_UsesRouteIdAndUpdatesPlant()
+    public async Task Update_UsesRouteUidAndUpdatesPlant()
     {
         var existingPlant = new Plant
         {
@@ -72,7 +72,7 @@ public class PlantsControllerTests
         using var provider = CreateServiceProvider(new StubPlantRepository([existingPlant]));
         var controller = provider.GetRequiredService<PlantsController>();
 
-        var result = await controller.Update(1, new PlantInputDto(
+        var result = await controller.Update(existingPlant.Uid, new PlantInputDto(
             "Rosa rugosa", "Rugosa rose", [], "Rosaceae", PlantType.Flowering,
             "A hardy flowering shrub.", "Thorny arching stems."), CancellationToken.None);
 
@@ -109,14 +109,13 @@ public class PlantsControllerTests
                 _plants.Values.OrderBy(plant => plant.Id).Skip(offset).Take(limit).ToArray(),
                 offset, limit, _plants.Count));
 
-        public Task<Plant?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+        public Task<Plant?> GetByUidAsync(Guid uid, CancellationToken cancellationToken = default)
         {
-            _plants.TryGetValue(id, out var plant);
-            return Task.FromResult(plant);
+            return Task.FromResult(_plants.Values.FirstOrDefault(plant => plant.Uid == uid));
         }
 
-        public Task<bool> IsAlreadyExistAsync(int id, CancellationToken cancellationToken = default) =>
-            Task.FromResult(_plants.ContainsKey(id));
+        public Task<bool> IsAlreadyExistAsync(Guid uid, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_plants.Values.Any(plant => plant.Uid == uid));
 
         public Task AddAsync(Plant plant, CancellationToken cancellationToken = default)
         {

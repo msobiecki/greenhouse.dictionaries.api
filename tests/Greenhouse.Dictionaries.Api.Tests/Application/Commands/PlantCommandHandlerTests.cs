@@ -24,13 +24,13 @@ public class PlantCommandsTests
 
         var result = await sender.Send(new AddPlantCommand(plant));
 
-        Assert.Equal(1, result.Id);
+        Assert.NotEqual(Guid.Empty, result.Uid);
         Assert.Equal(plant.CommonName, result.CommonName);
-        Assert.Equal(plant.CommonName, (await repository.GetByIdAsync(result.Id))?.CommonName);
+        Assert.Equal(plant.CommonName, (await repository.GetByUidAsync(result.Uid))?.CommonName);
     }
 
     [Fact]
-    public async Task AddPlantTask_AssignsDifferentIdsToNewPlants()
+    public async Task AddPlantTask_AssignsDifferentUidsToNewPlants()
     {
         var repository = new StubPlantRepository();
         using var provider = CreateServiceProvider(repository);
@@ -40,7 +40,7 @@ public class PlantCommandsTests
         var first = await sender.Send(new AddPlantCommand(plant));
         var second = await sender.Send(new AddPlantCommand(plant));
 
-        Assert.NotEqual(first.Id, second.Id);
+        Assert.NotEqual(first.Uid, second.Uid);
     }
 
     [Fact]
@@ -64,9 +64,10 @@ public class PlantCommandsTests
         var sender = provider.GetRequiredService<ISender>();
         var updatedPlant = CreatePlant("Updated plant");
 
-        var result = await sender.Send(new UpdatePlantCommand(plant.Id, updatedPlant));
+        var result = await sender.Send(new UpdatePlantCommand(plant.Uid, updatedPlant));
 
-        Assert.Equal("Updated plant", (await repository.GetByIdAsync(plant.Id))?.CommonName);
+        Assert.Equal("Updated plant", (await repository.GetByUidAsync(plant.Uid))?.CommonName);
+        Assert.Equal(plant.Uid, result.Uid);
         Assert.Equal(plant.CreatedAt, result.CreatedAt);
     }
 
@@ -76,7 +77,7 @@ public class PlantCommandsTests
         using var provider = CreateServiceProvider(new StubPlantRepository());
         var sender = provider.GetRequiredService<ISender>();
 
-        await Assert.ThrowsAsync<PlantNotFoundException>(() => sender.Send(new UpdatePlantCommand(4, CreatePlant())));
+        await Assert.ThrowsAsync<PlantNotFoundException>(() => sender.Send(new UpdatePlantCommand(Guid.NewGuid(), CreatePlant())));
     }
 
     [Fact]
@@ -87,9 +88,9 @@ public class PlantCommandsTests
         using var provider = CreateServiceProvider(repository);
         var sender = provider.GetRequiredService<ISender>();
 
-        await sender.Send(new DeletePlantCommand(plant.Id));
+        await sender.Send(new DeletePlantCommand(plant.Uid));
 
-        Assert.Null(await repository.GetByIdAsync(plant.Id));
+        Assert.Null(await repository.GetByUidAsync(plant.Uid));
     }
 
     [Fact]
@@ -98,7 +99,7 @@ public class PlantCommandsTests
         using var provider = CreateServiceProvider(new StubPlantRepository());
         var sender = provider.GetRequiredService<ISender>();
 
-        await Assert.ThrowsAsync<PlantNotFoundException>(() => sender.Send(new DeletePlantCommand(6)));
+        await Assert.ThrowsAsync<PlantNotFoundException>(() => sender.Send(new DeletePlantCommand(Guid.NewGuid())));
     }
 
     private static ServiceProvider CreateServiceProvider(StubPlantRepository repository)
@@ -144,14 +145,13 @@ public class PlantCommandsTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new PagedResult<Plant>([], offset, limit, 0));
 
-        public Task<Plant?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+        public Task<Plant?> GetByUidAsync(Guid uid, CancellationToken cancellationToken = default)
         {
-            _plants.TryGetValue(id, out var plant);
-            return Task.FromResult(plant);
+            return Task.FromResult(_plants.Values.FirstOrDefault(plant => plant.Uid == uid));
         }
 
-        public Task<bool> IsAlreadyExistAsync(int id, CancellationToken cancellationToken = default) =>
-            Task.FromResult(_plants.ContainsKey(id));
+        public Task<bool> IsAlreadyExistAsync(Guid uid, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_plants.Values.Any(plant => plant.Uid == uid));
 
         public Task AddAsync(Plant plant, CancellationToken cancellationToken = default)
         {

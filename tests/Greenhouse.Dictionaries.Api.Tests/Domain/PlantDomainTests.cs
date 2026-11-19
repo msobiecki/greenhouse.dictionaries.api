@@ -7,12 +7,13 @@ namespace Greenhouse.Dictionaries.Api.Tests.Domain;
 public sealed class PlantDomainTests
 {
     [Fact]
-    public void PlantNotFoundExceptionContainsPlantIdAndMessage()
+    public void PlantNotFoundExceptionContainsPlantUidAndMessage()
     {
-        var exception = new PlantNotFoundException(42);
+        var uid = Guid.NewGuid();
+        var exception = new PlantNotFoundException(uid);
 
-        Assert.Equal(42, exception.PlantId);
-        Assert.Contains("42", exception.Message);
+        Assert.Equal(uid, exception.PlantUid);
+        Assert.Contains(uid.ToString(), exception.Message);
         Assert.IsAssignableFrom<BaseException>(exception);
     }
 
