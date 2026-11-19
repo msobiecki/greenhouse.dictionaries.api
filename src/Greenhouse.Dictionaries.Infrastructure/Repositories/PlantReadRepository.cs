@@ -29,6 +29,7 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
         {
             var plants = await dbContext.Plants
                 .AsNoTracking()
+                .Include(plant => plant.Translations)
                 .Include(plant => plant.AlternativeNames)
                 .Include(plant => plant.Images)
                 .Include(plant => plant.ToxicityAssessments)
@@ -48,6 +49,25 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
                     ContainsIgnoreCase(plant.FoliageDescription, search) ||
                     ContainsIgnoreCase(plant.FlowerDescription, search) ||
                     ContainsIgnoreCase(plant.FruitDescription, search) ||
+                    plant.Translations.Any(translation =>
+                        ContainsIgnoreCase(translation.CommonName, search) ||
+                        ContainsIgnoreCase(translation.AlternativeNamesJson, search) ||
+                        ContainsIgnoreCase(translation.Description, search) ||
+                        ContainsIgnoreCase(translation.IdentifyingCharacteristics, search) ||
+                        ContainsIgnoreCase(translation.NativeRange, search) ||
+                        ContainsIgnoreCase(translation.Habitat, search) ||
+                        ContainsIgnoreCase(translation.EnvironmentalNotes, search) ||
+                        ContainsIgnoreCase(translation.DetailedDescription, search) ||
+                        ContainsIgnoreCase(translation.GrowthHabit, search) ||
+                        ContainsIgnoreCase(translation.FoliageDescription, search) ||
+                        ContainsIgnoreCase(translation.FlowerDescription, search) ||
+                        ContainsIgnoreCase(translation.FloweringPeriod, search) ||
+                        ContainsIgnoreCase(translation.FruitDescription, search) ||
+                        ContainsIgnoreCase(translation.WateringInstructions, search) ||
+                        ContainsIgnoreCase(translation.SeasonalWateringNotes, search) ||
+                        ContainsIgnoreCase(translation.FertilizingInstructions, search) ||
+                        ContainsIgnoreCase(translation.PruningInstructions, search) ||
+                        ContainsIgnoreCase(translation.RepottingInstructions, search)) ||
                     plant.AlternativeNames.Any(alias => ContainsIgnoreCase(alias.Name, search)) ||
                     plant.ToxicityAssessments.Any(assessment =>
                         ContainsIgnoreCase(assessment.TargetCode, search) ||
@@ -58,6 +78,7 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
 
         IQueryable<Plant> query = dbContext.Plants
             .AsNoTracking()
+            .Include(plant => plant.Translations)
             .Include(plant => plant.AlternativeNames)
             .Include(plant => plant.Images)
             .Include(plant => plant.ToxicityAssessments)
@@ -79,6 +100,25 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
                 (plant.FoliageDescription != null && plant.FoliageDescription.ToLower().Contains(normalizedSearch)) ||
                 (plant.FlowerDescription != null && plant.FlowerDescription.ToLower().Contains(normalizedSearch)) ||
                 (plant.FruitDescription != null && plant.FruitDescription.ToLower().Contains(normalizedSearch)) ||
+                plant.Translations.Any(translation =>
+                    translation.CommonName.ToLower().Contains(normalizedSearch) ||
+                    translation.AlternativeNamesJson.ToLower().Contains(normalizedSearch) ||
+                    translation.Description.ToLower().Contains(normalizedSearch) ||
+                    translation.IdentifyingCharacteristics.ToLower().Contains(normalizedSearch) ||
+                    (translation.NativeRange != null && translation.NativeRange.ToLower().Contains(normalizedSearch)) ||
+                    (translation.Habitat != null && translation.Habitat.ToLower().Contains(normalizedSearch)) ||
+                    (translation.EnvironmentalNotes != null && translation.EnvironmentalNotes.ToLower().Contains(normalizedSearch)) ||
+                    (translation.DetailedDescription != null && translation.DetailedDescription.ToLower().Contains(normalizedSearch)) ||
+                    (translation.GrowthHabit != null && translation.GrowthHabit.ToLower().Contains(normalizedSearch)) ||
+                    (translation.FoliageDescription != null && translation.FoliageDescription.ToLower().Contains(normalizedSearch)) ||
+                    (translation.FlowerDescription != null && translation.FlowerDescription.ToLower().Contains(normalizedSearch)) ||
+                    (translation.FloweringPeriod != null && translation.FloweringPeriod.ToLower().Contains(normalizedSearch)) ||
+                    (translation.FruitDescription != null && translation.FruitDescription.ToLower().Contains(normalizedSearch)) ||
+                    (translation.WateringInstructions != null && translation.WateringInstructions.ToLower().Contains(normalizedSearch)) ||
+                    (translation.SeasonalWateringNotes != null && translation.SeasonalWateringNotes.ToLower().Contains(normalizedSearch)) ||
+                    (translation.FertilizingInstructions != null && translation.FertilizingInstructions.ToLower().Contains(normalizedSearch)) ||
+                    (translation.PruningInstructions != null && translation.PruningInstructions.ToLower().Contains(normalizedSearch)) ||
+                    (translation.RepottingInstructions != null && translation.RepottingInstructions.ToLower().Contains(normalizedSearch))) ||
                 plant.AlternativeNames.Any(alias => alias.Name.ToLower().Contains(normalizedSearch)) ||
                 plant.ToxicityAssessments.Any(assessment =>
                     assessment.TargetCode.ToLower().Contains(normalizedSearch) ||
@@ -167,6 +207,7 @@ internal sealed class PlantReadRepository(DatabaseContext dbContext) : IPlantRea
     public Task<Plant?> GetByIdAsync(int id, CancellationToken cancellationToken = default) =>
         dbContext.Plants
             .AsNoTracking()
+            .Include(plant => plant.Translations)
             .Include(plant => plant.AlternativeNames)
             .Include(plant => plant.Images)
             .Include(plant => plant.ToxicityAssessments)

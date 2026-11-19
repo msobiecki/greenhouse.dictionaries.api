@@ -1,3 +1,4 @@
+using Greenhouse.Dictionaries.Presentation.Localization;
 using Greenhouse.Dictionaries.Application.Commands;
 using Greenhouse.Dictionaries.Application.Abstractions;
 using Greenhouse.Dictionaries.Application.DTOs;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Globalization;
 
 namespace Greenhouse.Dictionaries.Presentation.Controllers;
 
@@ -32,27 +34,27 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
     {
         if (search?.Length > 200)
         {
-            return BadRequest("Search text cannot exceed 200 characters.");
+            return BadRequest(ApiMessages.SearchTextTooLong);
         }
 
         if (!string.IsNullOrWhiteSpace(family) && family.Length > 200)
         {
-            return BadRequest("Family filter cannot exceed 200 characters.");
+            return BadRequest(ApiMessages.FamilyFilterTooLong);
         }
 
         if (temperatureC is < -50 or > 60)
         {
-            return BadRequest("Temperature filter must be between -50 and 60 degrees Celsius.");
+            return BadRequest(ApiMessages.TemperatureFilterOutOfRange);
         }
 
         if (humidityPercent is < 0 or > 100)
         {
-            return BadRequest("Humidity filter must be between 0 and 100 percent.");
+            return BadRequest(ApiMessages.HumidityFilterOutOfRange);
         }
 
         if (toxicityTarget?.Length > 100)
         {
-            return BadRequest("Toxicity target cannot exceed 100 characters.");
+            return BadRequest(ApiMessages.ToxicityTargetTooLong);
         }
 
         var filters = new PlantSearchFilters(
@@ -64,7 +66,10 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
             TemperatureC: temperatureC,
             HumidityPercent: humidityPercent,
             Category: category);
-        return Ok(await mediator.Send(new GetPlantsQuery(search, filters), cancellationToken));
+        var plants = await mediator.Send(
+            new GetPlantsQuery(search, filters, CultureInfo.CurrentUICulture.Name), cancellationToken);
+        SetContentLanguages(plants.Select(plant => plant.Language));
+        return Ok(plants);
     }
 
     [HttpGet("{id}")]
@@ -73,7 +78,11 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
     [ProducesResponseType((int)HttpStatusCode.NotFound)]
     public async Task<IActionResult> GetById([FromRoute] int id, CancellationToken cancellationToken)
     {
-        var plant = await mediator.Send(new GetPlantByIdQuery(id), cancellationToken);
+        var plant = await mediator.Send(new GetPlantByIdQuery(id, CultureInfo.CurrentUICulture.Name), cancellationToken);
+        if (plant is not null)
+        {
+            SetContentLanguages([plant.Language]);
+        }
         return plant is null ? NotFound() : Ok(plant);
     }
 
@@ -85,7 +94,9 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
     [ProducesResponseType((int)HttpStatusCode.UnprocessableEntity)]
     public async Task<IActionResult> Add([FromBody] PlantInputDto plant, CancellationToken cancellationToken)
     {
-        var createdPlant = await mediator.Send(new AddPlantCommand(plant), cancellationToken);
+        var createdPlant = await mediator.Send(
+            new AddPlantCommand(plant, CultureInfo.CurrentUICulture.Name), cancellationToken);
+        SetContentLanguages([createdPlant.Language]);
         return CreatedAtAction(nameof(GetById), new { id = createdPlant.Id }, createdPlant);
     }
 
@@ -101,7 +112,7 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
         [FromBody] PlantInputDto plant,
         CancellationToken cancellationToken)
     {
-        await mediator.Send(new UpdatePlantCommand(id, plant), cancellationToken);
+        await mediator.Send(new UpdatePlantCommand(id, plant, CultureInfo.CurrentUICulture.Name), cancellationToken);
         return NoContent();
     }
 
@@ -115,5 +126,19 @@ public sealed class PlantsController(IMediator mediator) : ControllerBase
     {
         await mediator.Send(new DeletePlantCommand(id), cancellationToken);
         return NoContent();
+    }
+
+    private void SetContentLanguages(IEnumerable<string> languages)
+    {
+        if (ControllerContext?.HttpContext is null)
+        {
+            return;
+        }
+
+        var values = languages.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (values.Length > 0)
+        {
+            Response.Headers.ContentLanguage = string.Join(", ", values);
+        }
     }
 }

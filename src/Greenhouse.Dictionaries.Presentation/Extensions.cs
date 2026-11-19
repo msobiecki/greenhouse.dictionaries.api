@@ -1,8 +1,10 @@
-using Greenhouse.Dictionaries.Presentation.Controllers;
+using Greenhouse.Dictionaries.Application.Configuration;
+using Greenhouse.Dictionaries.Presentation.Configuration;
 using Greenhouse.Dictionaries.Presentation.Middlewares;
 using Greenhouse.Dictionaries.Presentation.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +44,7 @@ public static class Extensions
                 Type = SecuritySchemeType.ApiKey
             });
             swagger.OperationFilter<ApiKeyOperationFilter>();
+            swagger.OperationFilter<AcceptLanguageOperationFilter>();
         });
 
         services.AddControllers();
@@ -52,6 +55,24 @@ public static class Extensions
 
     public static WebApplication UsePresentation(this WebApplication app)
     {
+        var supportedCultures = LanguageConfiguration.CreateSupportedCultures();
+        app.UseRequestLocalization(new RequestLocalizationOptions
+        {
+            DefaultRequestCulture = new RequestCulture(LanguageConfiguration.DefaultCulture),
+            SupportedCultures = supportedCultures,
+            SupportedUICultures = supportedCultures,
+            RequestCultureProviders = new[] { new AcceptLanguageHeaderRequestCultureProvider() }
+        });
+        app.Use(async (context, next) =>
+        {
+            var requestCulture = context.Features.Get<IRequestCultureFeature>()?.RequestCulture.UICulture;
+            if (requestCulture is not null)
+            {
+                context.Response.Headers.ContentLanguage = requestCulture.Name;
+            }
+
+            await next();
+        });
         app.UseMiddleware<ExceptionHandlingMiddleware>();
         app.UseAuthentication();
         app.UseAuthorization();

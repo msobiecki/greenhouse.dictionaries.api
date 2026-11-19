@@ -7,6 +7,7 @@ namespace Greenhouse.Dictionaries.Infrastructure.Context;
 public sealed class DatabaseContext : DbContext
 {
     public DbSet<Plant> Plants => Set<Plant>();
+    public DbSet<PlantTranslation> PlantTranslations => Set<PlantTranslation>();
     public DbSet<PlantAlias> PlantAliases => Set<PlantAlias>();
     public DbSet<PlantImage> PlantImages => Set<PlantImage>();
     public DbSet<PlantToxicityAssessment> PlantToxicityAssessments => Set<PlantToxicityAssessment>();
@@ -24,6 +25,26 @@ public sealed class DatabaseContext : DbContext
         }
 
         modelBuilder.ApplyConfiguration(new PlantConfiguration());
+        modelBuilder.Entity<PlantTranslation>().ToTable("PlantTranslations");
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.Language).HasMaxLength(10).IsRequired();
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.CommonName).HasMaxLength(500).IsRequired();
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.AlternativeNamesJson).IsRequired();
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.Description).IsRequired();
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.IdentifyingCharacteristics).IsRequired();
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.ToxicityDetailsJson);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.EnvironmentalNotes).HasMaxLength(2000);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.DetailedDescription).HasMaxLength(5000);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.GrowthHabit).HasMaxLength(200);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.FoliageDescription).HasMaxLength(2000);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.FlowerDescription).HasMaxLength(2000);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.FloweringPeriod).HasMaxLength(200);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.FruitDescription).HasMaxLength(2000);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.WateringInstructions).HasMaxLength(2000);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.SeasonalWateringNotes).HasMaxLength(2000);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.FertilizingInstructions).HasMaxLength(2000);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.PruningInstructions).HasMaxLength(2000);
+        modelBuilder.Entity<PlantTranslation>().Property(translation => translation.RepottingInstructions).HasMaxLength(2000);
+        modelBuilder.Entity<PlantTranslation>().HasIndex(translation => new { translation.PlantId, translation.Language }).IsUnique();
         modelBuilder.Entity<PlantAlias>().ToTable("PlantAliases");
         modelBuilder.Entity<PlantAlias>().Property(alias => alias.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<PlantImage>().ToTable("PlantImages");

@@ -37,6 +37,23 @@ public sealed class PlantsApiIntegrationTests
             (await client.PostAsJsonAsync("/api/plants", CreatePlant())).StatusCode);
     }
 
+    [Theory]
+    [InlineData("pl-PL", "pl-PL")]
+    [InlineData("en-US", "en-US")]
+    [InlineData("fr-FR", "en-US")]
+    public async Task AcceptLanguageSelectsSupportedCultureAndContentLanguage(
+        string acceptLanguage,
+        string expectedContentLanguage)
+    {
+        using var factory = new PlantsApiFactory();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/plants?family=NoMatchingFamily");
+        request.Headers.AcceptLanguage.ParseAdd(acceptLanguage);
+
+        using var response = await factory.CreateClient().SendAsync(request);
+
+        Assert.Equal(expectedContentLanguage, Assert.Single(response.Content.Headers.ContentLanguage));
+    }
+
     [Fact]
     public async Task SwaggerDocumentsApiKeyForWriteOperationsOnly()
     {
@@ -50,6 +67,8 @@ public sealed class PlantsApiIntegrationTests
 
         Assert.False(plantsPath.GetProperty("get").TryGetProperty("security", out _));
         Assert.True(plantsPath.GetProperty("post").TryGetProperty("security", out _));
+        AssertAcceptLanguageParameter(plantsPath.GetProperty("get"));
+        AssertAcceptLanguageParameter(plantsPath.GetProperty("post"));
         Assert.Equal(
             "X-API-Key",
             document.RootElement.GetProperty("components")
@@ -58,6 +77,20 @@ public sealed class PlantsApiIntegrationTests
         Assert.True(plantByIdPath.GetProperty("put").GetProperty("responses").TryGetProperty("404", out _));
         Assert.True(plantByIdPath.GetProperty("put").GetProperty("responses").TryGetProperty("422", out _));
         Assert.True(plantByIdPath.GetProperty("delete").GetProperty("responses").TryGetProperty("404", out _));
+    }
+
+    private static void AssertAcceptLanguageParameter(JsonElement operation)
+    {
+        var parameter = Assert.Single(operation.GetProperty("parameters").EnumerateArray(), item =>
+            item.GetProperty("name").GetString() == "Accept-Language");
+        Assert.Equal("header", parameter.GetProperty("in").GetString());
+        Assert.False(parameter.TryGetProperty("required", out var required) && required.GetBoolean());
+
+        var schema = parameter.GetProperty("schema");
+        Assert.Equal("en-US", schema.GetProperty("default").GetString());
+        Assert.Equal(
+            new[] { "en-US", "pl-PL" },
+            schema.GetProperty("enum").EnumerateArray().Select(value => value.GetString()).ToArray());
     }
 
     [Fact]
@@ -164,6 +197,77 @@ public sealed class PlantsApiIntegrationTests
     }
 
     [Fact]
+    public async Task PlantTranslationsAreSelectedByAcceptLanguageAndReportContentLanguage()
+    {
+        using var factory = new PlantsApiFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", ApiKey);
+
+        var createResponse = await client.PostAsJsonAsync("/api/plants", CreatePlant());
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        Assert.Equal("en-US", Assert.Single(createResponse.Content.Headers.ContentLanguage));
+        var englishPlant = await createResponse.Content.ReadFromJsonAsync<PlantDto>();
+        Assert.NotNull(englishPlant);
+
+        using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/plants/{englishPlant.Id}");
+        fallbackRequest.Headers.AcceptLanguage.ParseAdd("pl-PL");
+        using var fallbackResponse = await client.SendAsync(fallbackRequest);
+        var fallbackPlant = await fallbackResponse.Content.ReadFromJsonAsync<PlantDto>();
+        Assert.Equal("en-US", Assert.Single(fallbackResponse.Content.Headers.ContentLanguage));
+        Assert.Equal("Rugosa rose", fallbackPlant?.CommonName);
+
+        using var updateRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/plants/{englishPlant.Id}")
+        {
+            Content = JsonContent.Create(CreatePlant(
+                "Róża pomarszczona", "Róża japońska", "Szczegóły toksyczności."))
+        };
+        updateRequest.Headers.AcceptLanguage.ParseAdd("pl-PL");
+        using var updateResponse = await client.SendAsync(updateRequest);
+        Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
+
+        using var polishRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/plants/{englishPlant.Id}");
+        polishRequest.Headers.AcceptLanguage.ParseAdd("pl-PL");
+        using var polishResponse = await client.SendAsync(polishRequest);
+        var polishPlant = await polishResponse.Content.ReadFromJsonAsync<PlantDto>();
+        Assert.Equal("pl-PL", Assert.Single(polishResponse.Content.Headers.ContentLanguage));
+        Assert.Equal("Róża pomarszczona", polishPlant?.CommonName);
+        Assert.Equal("Róża japońska", Assert.Single(polishPlant!.AlternativeNames));
+        Assert.Equal("Szczegóły toksyczności.", Assert.Single(polishPlant.ToxicityAssessments,
+            assessment => assessment.TargetCode == "cat").Details);
+
+        using var englishRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/plants/{englishPlant.Id}");
+        englishRequest.Headers.AcceptLanguage.ParseAdd("en-US");
+        using var englishResponse = await client.SendAsync(englishRequest);
+        var unchangedEnglishPlant = await englishResponse.Content.ReadFromJsonAsync<PlantDto>();
+        Assert.Equal("en-US", Assert.Single(englishResponse.Content.Headers.ContentLanguage));
+        Assert.Equal("Rugosa rose", unchangedEnglishPlant?.CommonName);
+        Assert.Equal("Beach rose", Assert.Single(unchangedEnglishPlant!.AlternativeNames));
+        Assert.Equal("Test toxicity details.", Assert.Single(unchangedEnglishPlant.ToxicityAssessments,
+            assessment => assessment.TargetCode == "cat").Details);
+    }
+
+    [Fact]
+    public async Task ValidationErrorsUseNegotiatedLanguage()
+    {
+        using var factory = new PlantsApiFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", ApiKey);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/plants")
+        {
+            Content = JsonContent.Create(CreatePlant(" "))
+        };
+        request.Headers.AcceptLanguage.ParseAdd("pl-PL");
+
+        using var response = await client.SendAsync(request);
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal((HttpStatusCode)422, response.StatusCode);
+        Assert.Equal("pl-PL", Assert.Single(response.Content.Headers.ContentLanguage));
+        Assert.Contains("Polecenie zawiera nieprawidłowe dane.", responseBody);
+        Assert.Contains("jest wymagane.", responseBody);
+    }
+
+    [Fact]
     public async Task ValidationAndNotFoundExceptionsHaveExpectedHttpResponses()
     {
         using var factory = new PlantsApiFactory();
@@ -184,7 +288,8 @@ public sealed class PlantsApiIntegrationTests
 
     private static PlantInputDto CreatePlant(
         string commonName = "Rugosa rose",
-        string alternativeName = "Beach rose") => new(
+        string alternativeName = "Beach rose",
+        string toxicityDetails = "Test toxicity details.") => new(
         "Rosa rugosa",
         commonName,
         [alternativeName],
@@ -206,7 +311,7 @@ public sealed class PlantsApiIntegrationTests
         MatureWidthCm: 250,
         ToxicityAssessments:
         [
-            new("cat", ToxicityLevel.Toxic, "Test toxicity details.",
+            new("cat", ToxicityLevel.Toxic, toxicityDetails,
                 [new("https://example.test/toxicity", "Example plant registry")]),
             new("dog", ToxicityLevel.NoKnownRisk),
             new("human", ToxicityLevel.NoKnownRisk),
@@ -246,6 +351,8 @@ public sealed class PlantsApiIntegrationTests
         {
             builder.UseEnvironment(environment);
             builder.UseSetting("Security:ApiKey", ApiKey);
+            builder.UseSetting("Database:Provider", "Sqlite");
+            builder.UseSetting("ConnectionStrings:Greenhouse", $"Data Source={databasePath}");
             builder.ConfigureAppConfiguration((_, configuration) =>
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {

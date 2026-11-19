@@ -1,3 +1,4 @@
+using Greenhouse.Dictionaries.Presentation.Localization;
 using FluentValidation;
 using Greenhouse.Dictionaries.Domain.Exceptions;
 using Microsoft.AspNetCore.Http;
@@ -23,9 +24,14 @@ public sealed class ExceptionHandlingMiddleware(ILogger<ExceptionHandlingMiddlew
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         var statusCode = GetStatusCode(exception);
-        var message = exception is BaseException or ValidationException
-            ? exception.Message
-            : "An unexpected error occurred.";
+        var message = exception switch
+        {
+            PlantNotFoundException notFound => ApiMessages.PlantNotFound(notFound.PlantId),
+            PlantAlreadyExistsException alreadyExists => ApiMessages.PlantAlreadyExists(alreadyExists.PlantId),
+            ValidationException => ApiMessages.InvalidCommand,
+            BaseException => exception.Message,
+            _ => ApiMessages.UnexpectedError
+        };
 
         var response = new
         {
@@ -52,7 +58,7 @@ public sealed class ExceptionHandlingMiddleware(ILogger<ExceptionHandlingMiddlew
         {
             return validationException.Errors
                 .GroupBy(error => error.PropertyName)
-                .ToDictionary(group => group.Key, group => group.Select(error => error.ErrorMessage).ToArray());
+                .ToDictionary(group => group.Key, group => group.Select(ApiMessages.ValidationError).ToArray());
         }
 
         return new Dictionary<string, string[]>();

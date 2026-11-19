@@ -285,6 +285,104 @@ namespace Greenhouse.Dictionaries.Infrastructure.Migrations
                     b.ToTable("PlantToxicitySources", "greenhouse");
                 });
 
+            modelBuilder.Entity("Greenhouse.Dictionaries.Domain.Entities.PlantTranslation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AlternativeNamesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CommonName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DetailedDescription")
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EnvironmentalNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("FertilizingInstructions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("FlowerDescription")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("FloweringPeriod")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("FoliageDescription")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("FruitDescription")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("GrowthHabit")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Habitat")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IdentifyingCharacteristics")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("NativeRange")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PlantId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PruningInstructions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("RepottingInstructions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("SeasonalWateringNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ToxicityDetailsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("WateringInstructions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlantId", "Language")
+                        .IsUnique();
+
+                    b.ToTable("PlantTranslations", "greenhouse");
+                });
+
             modelBuilder.Entity("Greenhouse.Dictionaries.Domain.Entities.PlantAlias", b =>
                 {
                     b.HasOne("Greenhouse.Dictionaries.Domain.Entities.Plant", null)
@@ -321,6 +419,15 @@ namespace Greenhouse.Dictionaries.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Greenhouse.Dictionaries.Domain.Entities.PlantTranslation", b =>
+                {
+                    b.HasOne("Greenhouse.Dictionaries.Domain.Entities.Plant", null)
+                        .WithMany("Translations")
+                        .HasForeignKey("PlantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Greenhouse.Dictionaries.Domain.Entities.Plant", b =>
                 {
                     b.Navigation("AlternativeNames");
@@ -328,6 +435,8 @@ namespace Greenhouse.Dictionaries.Infrastructure.Migrations
                     b.Navigation("Images");
 
                     b.Navigation("ToxicityAssessments");
+
+                    b.Navigation("Translations");
                 });
 
             modelBuilder.Entity("Greenhouse.Dictionaries.Domain.Entities.PlantToxicityAssessment", b =>

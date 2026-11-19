@@ -1,4 +1,5 @@
 using Greenhouse.Dictionaries.Domain.Entities;
+using Greenhouse.Dictionaries.Application.Configuration;
 
 namespace Greenhouse.Dictionaries.Application.DTOs;
 
@@ -39,7 +40,10 @@ public sealed record PlantDto(
     PlantToxicityAssessmentDto[] ToxicityAssessments,
     PlantImageDto[] Images,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt)
+{
+    public string Language { get; init; } = LanguageConfiguration.DefaultCulture;
+}
 
 public sealed record PlantToxicityAssessmentDto(
     string TargetCode,

@@ -46,6 +46,10 @@ public class PlantConfiguration : BaseEntityConfiguration<Plant>
             .WithOne()
             .HasForeignKey(alias => alias.PlantId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.HasMany(p => p.Translations)
+            .WithOne()
+            .HasForeignKey(translation => translation.PlantId)
+            .OnDelete(DeleteBehavior.Cascade);
         builder.HasMany(p => p.Images)
             .WithOne()
             .HasForeignKey(image => image.PlantId)

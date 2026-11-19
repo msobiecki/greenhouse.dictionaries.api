@@ -34,6 +34,7 @@ public class Plant : Entity
     public string? FloweringPeriod { get; set; }
     public string? FruitDescription { get; set; }
     public PlantLifeCycle? LifeCycle { get; set; }
+    public List<PlantTranslation> Translations { get; set; } = [];
     public List<PlantToxicityAssessment> ToxicityAssessments { get; set; } = [];
     public List<PlantImage> Images { get; set; } = [];
 }

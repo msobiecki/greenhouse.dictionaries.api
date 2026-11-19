@@ -28,8 +28,6 @@ A .NET Web API providing a comprehensive dictionary of plants. It allows applica
 
 Catalog data is persisted in SQLite during development and SQL Server in the Compose deployment. Read endpoints are anonymous; write endpoints require an API key.
 
-Toxicity is provided as assessments for target organisms (for example `cat`, `dog`, or `rabbit`), each with a risk level and optional details and sources. See Swagger for the full request and response schema.
-
 ## Getting Started
 
 Follow these instructions to set up the project locally.
@@ -160,6 +158,19 @@ to match the deployment. Stop the container with `docker compose down`.
 When running in development, the API is available at `http://localhost:5224` and Swagger UI at `http://localhost:5224/swagger`. Swagger is the source of truth for the current routes, parameters, and response schemas as the API evolves.
 
 `Greenhouse.Dictionaries.Api` is the application entry point and composition root. It references the Domain, Application, Infrastructure, and Presentation projects under `src/`.
+
+### Languages
+
+The API supports `en-US` and `pl-PL`. Send `Accept-Language` to select the language of plant text and API validation messages:
+
+```http
+GET /api/plants/1 HTTP/1.1
+Accept-Language: pl-PL
+```
+
+POST and PUT bodies use the language selected by `Accept-Language`. A PUT updates that language's translation while retaining other translations. Existing plant text is migrated as `en-US`. If the requested translation is unavailable, the API returns the English translation, or the only available translation when no English version exists.
+
+Responses include `Content-Language` for the language actually returned. A list response can contain more than one language when some plants use a fallback; in that case the header lists the languages present. Unsupported or missing `Accept-Language` values fall back to `en-US`.
 
 ## License
 

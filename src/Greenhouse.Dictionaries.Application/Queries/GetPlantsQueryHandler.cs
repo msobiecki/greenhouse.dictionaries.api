@@ -1,5 +1,6 @@
 using Greenhouse.Dictionaries.Application.Configuration.Queries;
 using Greenhouse.Dictionaries.Application.DTOs;
+using Greenhouse.Dictionaries.Application.Configuration.Mappings;
 using Greenhouse.Dictionaries.Application.Abstractions;
 using AutoMapper;
 
@@ -11,6 +12,6 @@ public sealed class GetPlantsQueryHandler(IPlantReadRepository plantRepository, 
     {
         var plants = await plantRepository.GetAllAsync(
             request.Search, request.Filters, cancellationToken);
-        return plants.Select(plant => mapper.Map<PlantDto>(plant)).ToArray();
+        return plants.Select(plant => PlantLocalization.ToDto(mapper, plant, request.Language)).ToArray();
     }
 }

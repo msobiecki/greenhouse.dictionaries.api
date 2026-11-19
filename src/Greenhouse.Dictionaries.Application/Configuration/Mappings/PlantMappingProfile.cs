@@ -1,4 +1,5 @@
 using AutoMapper;
+using System.Text.Json;
 
 using Greenhouse.Dictionaries.Application.DTOs;
 using Greenhouse.Dictionaries.Domain.Entities;
@@ -25,6 +26,9 @@ public sealed class PlantMappingProfile : Profile
         CreateMap<Plant, PlantDto>()
             .ForMember(dto => dto.AlternativeNames,
                 options => options.MapFrom(plant => plant.AlternativeNames));
+        CreateMap<PlantInputDto, PlantTranslation>()
+            .ForMember(translation => translation.AlternativeNamesJson,
+                options => options.MapFrom(dto => JsonSerializer.Serialize(dto.AlternativeNames ?? Array.Empty<string>())));
         CreateMap<PlantInputDto, Plant>()
             .ForMember(plant => plant.AlternativeNames,
                 options => options.MapFrom(dto => dto.AlternativeNames ?? Array.Empty<string>()))
