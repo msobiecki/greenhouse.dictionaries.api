@@ -1,0 +1,37 @@
+name: Pull Request check
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        dotnet-version: [10.0.x]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use .NET ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Restore
+        run: dotnet restore Greenhouse.Dictionaries.slnx
+
+      - name: Verify formatting
+        run: dotnet format Greenhouse.Dictionaries.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build Greenhouse.Dictionaries.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test Greenhouse.Dictionaries.slnx --configuration Release --no-build --no-restore

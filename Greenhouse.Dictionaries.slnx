@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Greenhouse.Dictionaries.Application/Greenhouse.Dictionaries.Application.csproj" />
+    <Project Path="src/Greenhouse.Dictionaries.Api/Greenhouse.Dictionaries.Api.csproj" />
+    <Project Path="src/Greenhouse.Dictionaries.Domain/Greenhouse.Dictionaries.Domain.csproj" />
+    <Project Path="src/Greenhouse.Dictionaries.Infrastructure/Greenhouse.Dictionaries.Infrastructure.csproj" />
+    <Project Path="src/Greenhouse.Dictionaries.Presentation/Greenhouse.Dictionaries.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Greenhouse.Dictionaries.Api.Tests/Greenhouse.Dictionaries.Api.Tests.csproj" />
+  </Folder>
+</Solution>

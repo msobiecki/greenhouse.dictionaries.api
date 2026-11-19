@@ -1,0 +1,46 @@
+@Greenhouse.Dictionaries.Api_HostAddress = http://localhost:5224
+
+GET {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants
+Accept: application/json
+
+###
+
+GET {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants?search=rose&category=flower
+Accept: application/json
+
+###
+
+GET {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants/1
+Accept: application/json
+
+###
+
+POST {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants
+Content-Type: application/json
+
+{
+	"scientificName": "Monstera deliciosa",
+	"commonName": "Swiss cheese plant",
+	"family": "Araceae",
+	"category": "foliage",
+	"description": "A tropical climbing plant with split leaves.",
+	"sunlight": "Bright indirect light",
+	"watering": "Water when the top soil is dry.",
+	"flowerColor": null
+}
+
+###
+
+PUT {{Greenhouse.Dictionaries.Api_HostAddress}}/api/plants/1
+Content-Type: application/json
+
+{
+	"scientificName": "Monstera deliciosa",
+	"commonName": "Swiss cheese plant",
+	"family": "Araceae",
+	"category": "foliage",
+	"description": "A tropical climbing plant with split leaves.",
+	"sunlight": "Bright indirect light",
+	"watering": "Water when the top soil is dry.",
+	"flowerColor": null
+}

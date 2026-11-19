@@ -1,0 +1,44 @@
+services:
+  database:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD}
+    ports:
+      - "1433:1433"
+    volumes:
+      - greenhouse_sql_data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q 'SELECT 1' || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+  api:
+    build: .
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+      - "8443:8081"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 8080
+      ASPNETCORE_HTTPS_PORTS: 8081
+      ASPNETCORE_HTTPS_PORT: 8443
+      ConnectionStrings__Greenhouse: "Server=database,1433;Database=Greenhouse;User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /https/certificate.pfx
+      ASPNETCORE_Kestrel__Certificates__Default__Password: ${HTTPS_CERTIFICATE_PASSWORD:?Set HTTPS_CERTIFICATE_PASSWORD}
+    volumes:
+      - type: bind
+        source: ${HTTPS_CERTIFICATE_PATH:?Set HTTPS_CERTIFICATE_PATH}
+        target: /https/certificate.pfx
+        read_only: true
+
+volumes:
+  greenhouse_sql_data:

@@ -40,6 +40,9 @@ ScaffoldingReadMe.txt
 .env
 
 # Others
+greenhouse-development.db
+greenhouse-development.db-shm
+greenhouse-development.db-wal
 ~$*
 *~
 CodeCoverage/
