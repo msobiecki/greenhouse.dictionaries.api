@@ -193,6 +193,24 @@ POST and PUT bodies use the language selected by `Accept-Language`. A PUT update
 
 Responses include `Content-Language` for the language actually returned. A list response can contain more than one language when some plants use a fallback; in that case the header lists the languages present. Unsupported or missing `Accept-Language` values fall back to `en-US`.
 
+## API Documentation
+
+When running in the `Development` environment, interactive API documentation and
+the generated OpenAPI specification are available at:
+
+- [Swagger UI](http://localhost:5224/swagger)
+- [OpenAPI JSON](http://localhost:5224/swagger/v1/swagger.json)
+
+Swagger documents the available endpoints, query parameters, request bodies and
+response schemas. To try write operations, select **Authorize** and enter your API
+key; Swagger sends it in the `X-API-Key` header. Use a plant's returned `uid` for
+single-plant GET, PUT and DELETE requests. Set `Accept-Language` to `en-US` or
+`pl-PL` to select the language.
+
+These URLs use the default HTTP launch profile. Adjust the origin when using a
+different host or port. Swagger UI and the OpenAPI endpoint are disabled outside
+`Development`, including the production Docker Compose deployment.
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for more details.
